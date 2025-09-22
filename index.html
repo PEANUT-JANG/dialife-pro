@@ -24,8 +24,13 @@
 
     const App = () => {
       const [records, setRecords] = useState(() => {
-        const saved = localStorage.getItem('glucose_records');
-        return saved ? JSON.parse(saved) : [];
+        try {
+          const saved = localStorage.getItem('glucose_records');
+          const parsed = saved ? JSON.parse(saved) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
       });
 
       const [newRecord, setNewRecord] = useState({
@@ -53,7 +58,7 @@
       };
 
       const handleDelete = (id) => {
-        const updated = records.filter(r => r.id !== id);
+        const updated = (records || []).filter(r => r.id !== id);
         setRecords(updated);
         localStorage.setItem('glucose_records', JSON.stringify(updated));
       };
@@ -69,7 +74,7 @@
       };
 
       const confirmEdit = (id) => {
-        const updated = records.map(r =>
+        const updated = (records || []).map(r =>
           r.id === id ? {
             ...r,
             ...editData,
@@ -106,9 +111,9 @@
 
           <div className="mt-10">
             <h2 className="text-xl font-semibold mb-4">기록 목록</h2>
-            {records.length === 0 && <p className="text-gray-500">기록이 없습니다.</p>}
+            {(!records || records.length === 0) && <p className="text-gray-500">기록이 없습니다.</p>}
             <ul className="space-y-4">
-              {records.map(record => (
+              {(records || []).map(record => (
                 <li key={record.id} className="bg-gray-50 border rounded-xl p-4">
                   {editingId === record.id ? (
                     <div className="grid md:grid-cols-2 gap-4">
