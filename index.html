@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DiaLife Pro - 통합 당뇨 관리</title>
+  <title>DiaLife Pro - 개인화 1형당뇨 관리 시스템</title>
   <style>
     * {
       margin: 0;
@@ -15,43 +15,128 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
       line-height: 1.6;
       color: #333;
-      background-color: #f8fafc;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
     }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem 1rem;
+    .auth-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
     }
 
-    .header {
+    .auth-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      padding: 3rem;
+      width: 100%;
+      max-width: 500px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       text-align: center;
+    }
+
+    .auth-header {
       margin-bottom: 2rem;
     }
 
-    .header h1 {
+    .auth-header h1 {
       font-size: 2.5rem;
       font-weight: bold;
-      color: #1f2937;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       margin-bottom: 0.5rem;
     }
 
-    .header p {
+    .auth-header p {
       color: #6b7280;
       font-size: 1.1rem;
     }
 
-    .card {
-      background: white;
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
       border-radius: 1rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       padding: 1.5rem;
       margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+
+    .header-left h1 {
+      font-size: 2rem;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      margin-bottom: 0.25rem;
+    }
+
+    .header-left .welcome {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-info {
+      text-align: right;
+    }
+
+    .user-info .user-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .user-info .user-stats {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #1f2937;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 1rem;
     }
@@ -69,16 +154,19 @@
     }
 
     .form-group input, 
-    .form-group select {
+    .form-group select,
+    .form-group textarea {
       padding: 0.75rem;
-      border: 1px solid #d1d5db;
+      border: 2px solid #e5e7eb;
       border-radius: 0.5rem;
       font-size: 1rem;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: all 0.2s;
+      background: white;
     }
 
     .form-group input:focus,
-    .form-group select:focus {
+    .form-group select:focus,
+    .form-group textarea:focus {
       outline: none;
       border-color: #3b82f6;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -91,43 +179,43 @@
       font-size: 1rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
     }
 
     .btn-primary {
-      background-color: #3b82f6;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
       color: white;
     }
 
     .btn-primary:hover {
-      background-color: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
     }
 
     .btn-success {
-      background-color: #10b981;
+      background: linear-gradient(135deg, #10b981, #059669);
       color: white;
     }
 
-    .btn-success:hover {
-      background-color: #059669;
-    }
-
-    .btn-secondary {
-      background-color: #6b7280;
+    .btn-ai {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
       color: white;
     }
 
-    .btn-secondary:hover {
-      background-color: #4b5563;
-    }
-
-    .btn-danger {
-      background-color: #ef4444;
+    .btn-logout {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
       color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
     }
 
-    .btn-danger:hover {
-      background-color: #dc2626;
+    .btn-full {
+      width: 100%;
+      justify-content: center;
     }
 
     .btn-small {
@@ -135,81 +223,181 @@
       font-size: 0.875rem;
     }
 
-    .btn-full {
-      width: 100%;
+    .personalized-insights {
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border: 2px solid #0284c7;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
     }
 
-    .carb-preview {
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .insight-card {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      border-left: 4px solid #0284c7;
+    }
+
+    .insight-title {
+      font-weight: 600;
+      color: #0c4a6e;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .insight-value {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #1f2937;
+    }
+
+    .insight-change {
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .trend-up {
+      color: #059669;
+    }
+
+    .trend-down {
+      color: #dc2626;
+    }
+
+    .trend-stable {
+      color: #6b7280;
+    }
+
+    .stats-dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .ai-recommendations {
+      background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+      border: 2px solid #8b5cf6;
+      border-radius: 1rem;
+      padding: 1.5rem;
       margin-top: 1rem;
-      padding: 0.75rem;
-      background-color: #eff6ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 0.5rem;
-      color: #1e40af;
     }
 
-    .record-list {
+    .food-pattern-analysis {
       margin-top: 2rem;
     }
 
-    .record-item {
-      background-color: #f9fafb;
+    .pattern-item {
+      background: rgba(255, 255, 255, 0.8);
       border: 1px solid #e5e7eb;
       border-radius: 0.75rem;
       padding: 1rem;
       margin-bottom: 1rem;
+      transition: all 0.2s;
     }
 
-    .record-content {
+    .pattern-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .glucose-trend {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-
-    .record-info {
-      flex: 1;
-    }
-
-    .record-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .record-actions {
-      display: flex;
+      align-items: center;
       gap: 0.5rem;
-      margin-left: 1rem;
-    }
-
-    .timestamp {
-      font-size: 0.875rem;
-      color: #6b7280;
       margin-top: 0.5rem;
     }
 
-    .empty-state {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: #6b7280;
+    .trend-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
     }
 
-    .empty-state h3 {
-      font-size: 1.25rem;
-      margin-bottom: 0.5rem;
+    .trend-good {
+      background: #10b981;
     }
 
-    .edit-form {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
+    .trend-warning {
+      background: #f59e0b;
     }
 
-    .edit-actions {
+    .trend-danger {
+      background: #ef4444;
+    }
+
+    .tab-container {
+      margin-bottom: 2rem;
+    }
+
+    .tab-buttons {
       display: flex;
       gap: 0.5rem;
+      margin-bottom: 1rem;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      padding: 0.5rem;
+    }
+
+    .tab-button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.75rem;
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .tab-button.active {
+      background: rgba(255, 255, 255, 0.95);
+      color: #1f2937;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .full-width {
       grid-column: 1 / -1;
     }
 
@@ -217,296 +405,852 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 50vh;
-      font-size: 1.125rem;
+      gap: 1rem;
+      padding: 2rem;
       color: #6b7280;
     }
 
-    .error {
-      background-color: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #b91c1c;
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e5e7eb;
+      border-top: 2px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .personal-goal {
+      background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+      border: 2px solid #10b981;
+      border-radius: 1rem;
       padding: 1rem;
-      border-radius: 0.5rem;
       margin-bottom: 1rem;
+    }
+
+    .goal-progress {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .goal-progress-bar {
+      height: 100%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      transition: width 0.3s ease;
+    }
+
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
     }
 
     @media (max-width: 768px) {
       .container {
-        padding: 1rem 0.5rem;
+        padding: 0.5rem;
       }
       
-      .header h1 {
-        font-size: 2rem;
+      .form-grid {
+        grid-template-columns: 1fr;
       }
       
-      .record-content {
-        flex-direction: column;
+      .insight-grid {
+        grid-template-columns: 1fr;
       }
       
-      .record-actions {
-        margin-left: 0;
-        margin-top: 1rem;
+      .stats-dashboard {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>DiaLife Pro 🍚</h1>
-      <p>당뇨 관리를 위한 혈당 기록 앱</p>
-    </header>
-
-    <div id="app">
-      <div class="loading">앱을 로딩 중입니다...</div>
+  <div id="app">
+    <div class="loading">
+      <div class="spinner"></div>
+      시스템을 초기화하는 중입니다...
     </div>
   </div>
 
   <script>
-    // 음식 데이터베이스
-    const FOOD_DATABASE = {
-      '밥': { carbs: 23, category: '주식' },
-      '사과': { carbs: 14, category: '과일' },
-      '바나나': { carbs: 23, category: '과일' },
-      '라면': { carbs: 55, category: '면류' },
-      '초콜릿': { carbs: 57, category: '간식' },
-      '빵': { carbs: 50, category: '주식' },
-      '우유': { carbs: 5, category: '유제품' },
-      '감자': { carbs: 17, category: '채소' },
-      '고구마': { carbs: 20, category: '채소' },
-      '닭가슴살': { carbs: 0, category: '단백질' }
+    // 한국 식품 데이터베이스
+    const KOREAN_FOOD_DATABASE = {
+      // 주식류
+      '백미밥': { carbs: 23, protein: 2.5, fat: 0.3, category: '주식', serving: 100, glycemicIndex: 73 },
+      '현미밥': { carbs: 22, protein: 2.8, fat: 0.9, category: '주식', serving: 100, glycemicIndex: 56 },
+      '보리밥': { carbs: 21, protein: 3.2, fat: 0.7, category: '주식', serving: 100, glycemicIndex: 25 },
+      '김밥': { carbs: 35, protein: 6, fat: 4, category: '주식', serving: 100, glycemicIndex: 65 },
+      '라면': { carbs: 55, protein: 9, fat: 16, category: '면류', serving: 100, glycemicIndex: 73 },
+      '냉면': { carbs: 19, protein: 4, fat: 0.5, category: '면류', serving: 100, glycemicIndex: 40 },
+      '우동': { carbs: 21, protein: 3, fat: 0.4, category: '면류', serving: 100, glycemicIndex: 55 },
+      '식빵': { carbs: 47, protein: 8, fat: 4, category: '주식', serving: 100, glycemicIndex: 75 },
+      '찐빵': { carbs: 45, protein: 6, fat: 2, category: '주식', serving: 100, glycemicIndex: 65 },
+      
+      // 과일류
+      '사과': { carbs: 14, protein: 0.3, fat: 0.2, category: '과일', serving: 100, glycemicIndex: 36 },
+      '배': { carbs: 11, protein: 0.3, fat: 0.1, category: '과일', serving: 100, glycemicIndex: 33 },
+      '바나나': { carbs: 23, protein: 1, fat: 0.2, category: '과일', serving: 100, glycemicIndex: 51 },
+      '오렌지': { carbs: 12, protein: 0.9, fat: 0.1, category: '과일', serving: 100, glycemicIndex: 42 },
+      '포도': { carbs: 16, protein: 0.6, fat: 0.2, category: '과일', serving: 100, glycemicIndex: 46 },
+      '수박': { carbs: 8, protein: 0.6, fat: 0.2, category: '과일', serving: 100, glycemicIndex: 72 },
+      '딸기': { carbs: 8, protein: 0.7, fat: 0.3, category: '과일', serving: 100, glycemicIndex: 40 },
+      
+      // 채소류
+      '배추김치': { carbs: 3, protein: 1.1, fat: 0.4, category: '채소', serving: 100, glycemicIndex: 15 },
+      '감자': { carbs: 17, protein: 2, fat: 0.1, category: '채소', serving: 100, glycemicIndex: 62 },
+      '고구마': { carbs: 20, protein: 1.2, fat: 0.2, category: '채소', serving: 100, glycemicIndex: 48 },
+      '옥수수': { carbs: 19, protein: 3.2, fat: 1.2, category: '채소', serving: 100, glycemicIndex: 52 },
+      
+      // 단백질류
+      '닭가슴살': { carbs: 0, protein: 23, fat: 1.2, category: '단백질', serving: 100, glycemicIndex: 0 },
+      '계란': { carbs: 0.7, protein: 13, fat: 11, category: '단백질', serving: 100, glycemicIndex: 0 },
+      '두부': { carbs: 2, protein: 8, fat: 4, category: '단백질', serving: 100, glycemicIndex: 15 },
+      
+      // 유제품류
+      '우유': { carbs: 5, protein: 3.3, fat: 3.2, category: '유제품', serving: 100, glycemicIndex: 39 },
+      '요구르트': { carbs: 7, protein: 3.5, fat: 3, category: '유제품', serving: 100, glycemicIndex: 41 },
+      
+      // 간식류
+      '초콜릿': { carbs: 57, protein: 4, fat: 31, category: '간식', serving: 100, glycemicIndex: 40 },
+      '쿠키': { carbs: 67, protein: 6, fat: 24, category: '간식', serving: 100, glycemicIndex: 77 },
+      '아이스크림': { carbs: 24, protein: 3, fat: 11, category: '간식', serving: 100, glycemicIndex: 51 }
     };
 
-    // 앱 상태
-    let appState = {
-      records: [],
-      editingId: null,
-      isLoading: true
-    };
+    // 사용자 관리 시스템
+    class UserManager {
+      constructor() {
+        this.currentUser = null;
+        this.users = this.loadUsers();
+      }
 
-    // localStorage 안전 접근
-    const storage = {
-      get: function(key) {
+      loadUsers() {
         try {
-          if (typeof Storage !== 'undefined') {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : null;
+          return JSON.parse(localStorage.getItem('dialife_users') || '{}');
+        } catch {
+          return {};
+        }
+      }
+
+      saveUsers() {
+        localStorage.setItem('dialife_users', JSON.stringify(this.users));
+      }
+
+      register(userData) {
+        const userId = this.generateUserId();
+        const user = {
+          id: userId,
+          ...userData,
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+          records: [],
+          preferences: {
+            targetGlucose: { min: 80, max: 180 },
+            reminderTime: '08:00',
+            notifications: true
+          },
+          personalizedData: {
+            avgGlucose: 0,
+            totalRecords: 0,
+            insulinSensitivity: 1,
+            foodReactions: {},
+            timePatterns: {},
+            weeklyGoals: []
           }
-        } catch (error) {
-          console.warn('Storage 읽기 실패:', error);
+        };
+        
+        this.users[userId] = user;
+        this.saveUsers();
+        return user;
+      }
+
+      login(username, password) {
+        const user = Object.values(this.users).find(u => 
+          u.username === username && u.password === password
+        );
+        
+        if (user) {
+          user.lastLogin = new Date().toISOString();
+          this.currentUser = user;
+          this.saveUsers();
+          return user;
         }
         return null;
-      },
-      set: function(key, value) {
-        try {
-          if (typeof Storage !== 'undefined') {
-            localStorage.setItem(key, JSON.stringify(value));
-            return true;
-          }
-        } catch (error) {
-          console.warn('Storage 저장 실패:', error);
+      }
+
+      getCurrentUser() {
+        return this.currentUser;
+      }
+
+      updateUserData(updates) {
+        if (this.currentUser) {
+          Object.assign(this.currentUser, updates);
+          this.users[this.currentUser.id] = this.currentUser;
+          this.saveUsers();
         }
-        return false;
-      }
-    };
-
-    // 유틸리티 함수들
-    function calculateCarbs(food, amount) {
-      if (!food || !amount || !FOOD_DATABASE[food]) return 0;
-      const numAmount = parseFloat(amount);
-      if (isNaN(numAmount)) return 0;
-      return Math.round((FOOD_DATABASE[food].carbs * numAmount) / 100);
-    }
-
-    function formatDate(timestamp) {
-      return new Date(timestamp).toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
-    function generateId() {
-      return Date.now() + Math.random();
-    }
-
-    // DOM 조작 함수들
-    function createElement(tag, className, content) {
-      const element = document.createElement(tag);
-      if (className) element.className = className;
-      if (content) element.innerHTML = content;
-      return element;
-    }
-
-    function clearElement(element) {
-      while (element.firstChild) {
-        element.removeChild(element.firstChild);
-      }
-    }
-
-    // 앱 렌더링
-    function renderApp() {
-      const appElement = document.getElementById('app');
-      clearElement(appElement);
-
-      if (appState.isLoading) {
-        appElement.appendChild(createElement('div', 'loading', '앱을 로딩 중입니다...'));
-        return;
       }
 
-      // 새 기록 폼
-      const formCard = createElement('div', 'card');
-      formCard.innerHTML = `
-        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">새 기록 추가</h2>
-        <form id="recordForm">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="glucose">혈당 (mg/dL) *</label>
-              <input type="number" id="glucose" name="glucose" placeholder="혈당 수치를 입력하세요" required>
+      addRecord(record) {
+        if (this.currentUser) {
+          this.currentUser.records.push(record);
+          this.updatePersonalizedData();
+          this.saveUsers();
+        }
+      }
+
+      updatePersonalizedData() {
+        if (!this.currentUser) return;
+
+        const records = this.currentUser.records;
+        const personalizedData = this.currentUser.personalizedData;
+
+        // 기본 통계 업데이트
+        personalizedData.totalRecords = records.length;
+        
+        if (records.length > 0) {
+          personalizedData.avgGlucose = Math.round(
+            records.reduce((sum, r) => sum + parseFloat(r.glucose), 0) / records.length
+          );
+
+          // 음식별 반응 패턴 분석
+          records.forEach(record => {
+            const food = record.food;
+            if (!personalizedData.foodReactions[food]) {
+              personalizedData.foodReactions[food] = {
+                count: 0,
+                avgGlucose: 0,
+                glucoseValues: [],
+                avgInsulin: 0,
+                avgCarbs: 0
+              };
+            }
+
+            const reaction = personalizedData.foodReactions[food];
+            reaction.count++;
+            reaction.glucoseValues.push(parseFloat(record.glucose));
+            reaction.avgGlucose = Math.round(
+              reaction.glucoseValues.reduce((a, b) => a + b, 0) / reaction.glucoseValues.length
+            );
+            reaction.avgInsulin = parseFloat(record.insulin) || 0;
+            reaction.avgCarbs = parseFloat(record.carbs) || 0;
+          });
+
+          // 시간대별 패턴 분석
+          records.forEach(record => {
+            const hour = new Date(record.timestamp).getHours();
+            const timeSlot = this.getTimeSlot(hour);
+            
+            if (!personalizedData.timePatterns[timeSlot]) {
+              personalizedData.timePatterns[timeSlot] = {
+                count: 0,
+                avgGlucose: 0,
+                records: []
+              };
+            }
+
+            personalizedData.timePatterns[timeSlot].records.push(parseFloat(record.glucose));
+            personalizedData.timePatterns[timeSlot].count++;
+            personalizedData.timePatterns[timeSlot].avgGlucose = Math.round(
+              personalizedData.timePatterns[timeSlot].records.reduce((a, b) => a + b, 0) / 
+              personalizedData.timePatterns[timeSlot].records.length
+            );
+          });
+
+          // 인슐린 민감도 추정
+          this.calculateInsulinSensitivity();
+        }
+      }
+
+      getTimeSlot(hour) {
+        if (hour >= 6 && hour < 12) return '아침';
+        if (hour >= 12 && hour < 18) return '점심';
+        if (hour >= 18 && hour < 22) return '저녁';
+        return '밤';
+      }
+
+      calculateInsulinSensitivity() {
+        const records = this.currentUser.records;
+        if (records.length < 5) return;
+
+        // 간단한 인슐린 민감도 계산 (실제로는 더 복잡한 알고리즘 필요)
+        const recentRecords = records.slice(-10);
+        let totalCarbToInsulin = 0;
+        let validRecords = 0;
+
+        recentRecords.forEach(record => {
+          const carbs = parseFloat(record.carbs);
+          const insulin = parseFloat(record.insulin);
+          if (carbs > 0 && insulin > 0) {
+            totalCarbToInsulin += carbs / insulin;
+            validRecords++;
+          }
+        });
+
+        if (validRecords > 0) {
+          this.currentUser.personalizedData.insulinSensitivity = 
+            Math.round((totalCarbToInsulin / validRecords) * 10) / 10;
+        }
+      }
+
+      generateUserId() {
+        return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      }
+    }
+
+    // 개인화 분석 엔진
+    class PersonalizationEngine {
+      constructor(userManager) {
+        this.userManager = userManager;
+      }
+
+      getPersonalizedInsights() {
+        const user = this.userManager.getCurrentUser();
+        if (!user || user.records.length < 3) return [];
+
+        const insights = [];
+        const data = user.personalizedData;
+        const records = user.records;
+
+        // 혈당 트렌드 분석
+        const recentRecords = records.slice(-7);
+        const avgRecent = recentRecords.reduce((sum, r) => sum + parseFloat(r.glucose), 0) / recentRecords.length;
+        const avgOverall = data.avgGlucose;
+        
+        if (avgRecent > avgOverall + 20) {
+          insights.push({
+            type: 'warning',
+            title: '⚠️ 최근 혈당 상승 주의',
+            description: `최근 7일 평균 혈당이 ${Math.round(avgRecent)}mg/dL로 전체 평균보다 높습니다.`,
+            recommendation: '식단과 운동 패턴을 점검해보세요.'
+          });
+        } else if (avgRecent < avgOverall - 20) {
+          insights.push({
+            type: 'positive',
+            title: '👍 혈당 관리 개선',
+            description: `최근 7일 평균 혈당이 ${Math.round(avgRecent)}mg/dL로 개선되었습니다.`,
+            recommendation: '현재 패턴을 유지하세요!'
+          });
+        }
+
+        // 음식별 개인화 추천
+        const problemFoods = Object.entries(data.foodReactions)
+          .filter(([food, reaction]) => reaction.avgGlucose > 200 && reaction.count >= 2)
+          .sort((a, b) => b[1].avgGlucose - a[1].avgGlucose);
+
+        if (problemFoods.length > 0) {
+          insights.push({
+            type: 'warning',
+            title: '🍽️ 혈당 상승 음식 주의',
+            description: `${problemFoods[0][0]}을(를) 섭취할 때 평균 혈당이 ${problemFoods[0][1].avgGlucose}mg/dL입니다.`,
+            recommendation: '해당 음식의 섭취량을 줄이거나 인슐린 용량을 조정해보세요.'
+          });
+        }
+
+        // 시간대별 패턴 분석
+        const timePatterns = Object.entries(data.timePatterns);
+        const highestTimeSlot = timePatterns.reduce((max, [time, pattern]) => 
+          pattern.avgGlucose > max.avgGlucose ? {time, avgGlucose: pattern.avgGlucose} : max
+        , {time: '', avgGlucose: 0});
+
+        if (highestTimeSlot.avgGlucose > 180) {
+          insights.push({
+            type: 'info',
+            title: '⏰ 시간대별 패턴',
+            description: `${highestTimeSlot.time} 시간대에 혈당이 높은 경향이 있습니다.`,
+            recommendation: '해당 시간대의 식사와 인슐린 타이밍을 검토해보세요.'
+          });
+        }
+
+        return insights.slice(0, 3); // 최대 3개까지
+      }
+
+      getPersonalizedRecommendations(currentRecord) {
+        const user = this.userManager.getCurrentUser();
+        if (!user) return '';
+
+        const food = currentRecord.food;
+        const glucose = parseFloat(currentRecord.glucose);
+        const data = user.personalizedData;
+        
+        let recommendations = [];
+
+        // 개인별 음식 반응 기반 추천
+        if (data.foodReactions[food]) {
+          const reaction = data.foodReactions[food];
+          if (reaction.avgGlucose > glucose + 30) {
+            recommendations.push(`이전에 ${food}을(를) 드셨을 때 평균 ${reaction.avgGlucose}mg/dL까지 상승했습니다. 주의하세요.`);
+          } else if (reaction.avgGlucose < glucose - 30) {
+            recommendations.push(`${food}은(는) 혈당 상승이 적은 음식입니다. 좋은 선택이에요!`);
+          }
+        }
+
+        // 혈당 수준별 개인화 조언
+        if (glucose < 70) {
+          recommendations.push('저혈당입니다. 즉시 포도당이나 단순당을 섭취하고 15분 후 재측정하세요.');
+        } else if (glucose > 250) {
+          recommendations.push('고혈당입니다. 충분한 수분 섭취와 함께 의료진에게 연락하는 것을 고려하세요.');
+        } else if (glucose > 180) {
+          const avgInsulin = data.foodReactions[food]?.avgInsulin || 0;
+          if (avgInsulin > 0) {
+            recommendations.push(`이전 기록을 보면 ${food}에 대해 평균 ${avgInsulin}단위의 인슐린을 사용하셨습니다.`);
+          }
+        }
+
+        // 인슐린 민감도 기반 추천
+        if (data.insulinSensitivity > 0) {
+          const suggestedRatio = Math.round(data.insulinSensitivity);
+          recommendations.push(`개인 데이터 분석 결과, 탄수화물 ${suggestedRatio}g당 인슐린 1단위 비율을 참고하세요.`);
+        }
+
+        return recommendations.join('\n\n');
+      }
+    }
+
+    // 글로벌 변수들
+    let userManager = new UserManager();
+    let personalizationEngine = new PersonalizationEngine(userManager);
+    let currentTab = 'dashboard';
+
+    // 앱 초기화
+    function initApp() {
+      const currentUser = userManager.getCurrentUser();
+      
+      if (!currentUser) {
+        renderAuthScreen();
+      } else {
+        renderMainApp();
+      }
+    }
+
+    // 인증 화면 렌더링
+    function renderAuthScreen() {
+      document.getElementById('app').innerHTML = `
+        <div class="auth-container">
+          <div class="auth-card">
+            <div class="auth-header">
+              <h1>🍚 DiaLife Pro</h1>
+              <p>개인화된 1형당뇨 관리 시스템</p>
             </div>
-            <div class="form-group">
-              <label for="food">음식 이름 *</label>
-              <input type="text" id="food" name="food" placeholder="음식 이름을 입력하세요" list="foodList" required>
-              <datalist id="foodList">
-                ${Object.keys(FOOD_DATABASE).map(food => `<option value="${food}">`).join('')}
-              </datalist>
-            </div>
-            <div class="form-group">
-              <label for="amount">섭취량 (g)</label>
-              <input type="number" id="amount" name="amount" placeholder="섭취량을 입력하세요">
-            </div>
-            <div class="form-group">
-              <label for="insulin">인슐린 용량 (단위)</label>
-              <input type="number" id="insulin" name="insulin" placeholder="인슐린 용량을 입력하세요">
+            
+            <div id="authContent">
+              <div id="loginForm">
+                <h3 style="margin-bottom: 1rem; color: #1f2937;">로그인</h3>
+                <form onsubmit="handleLogin(event)">
+                  <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="loginUsername">사용자명</label>
+                    <input type="text" id="loginUsername" required placeholder="사용자명을 입력하세요">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="loginPassword">비밀번호</label>
+                    <input type="password" id="loginPassword" required placeholder="비밀번호를 입력하세요">
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-full">로그인</button>
+                </form>
+                
+                <p style="text-align: center; margin: 1.5rem 0; color: #6b7280;">또는</p>
+                
+                <button onclick="showRegisterForm()" class="btn btn-success btn-full">
+                  새 계정 만들기
+                </button>
+              </div>
+              
+              <div id="registerForm" style="display: none;">
+                <h3 style="margin-bottom: 1rem; color: #1f2937;">회원가입</h3>
+                <form onsubmit="handleRegister(event)">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label for="regUsername">사용자명 *</label>
+                      <input type="text" id="regUsername" required placeholder="사용자명">
+                    </div>
+                    <div class="form-group">
+                      <label for="regPassword">비밀번호 *</label>
+                      <input type="password" id="regPassword" required placeholder="비밀번호">
+                    </div>
+                    <div class="form-group">
+                      <label for="regName">이름 *</label>
+                      <input type="text" id="regName" required placeholder="실명">
+                    </div>
+                    <div class="form-group">
+                      <label for="regAge">나이</label>
+                      <input type="number" id="regAge" placeholder="나이" min="1" max="120">
+                    </div>
+                    <div class="form-group">
+                      <label for="regWeight">체중 (kg)</label>
+                      <input type="number" id="regWeight" placeholder="체중" step="0.1">
+                    </div>
+                    <div class="form-group">
+                      <label for="regHeight">신장 (cm)</label>
+                      <input type="number" id="regHeight" placeholder="신장">
+                    </div>
+                  </div>
+                  
+                  <div class="form-group" style="margin: 1rem 0;">
+                    <label for="regDiagnosis">1형당뇨 진단 연도</label>
+                    <input type="number" id="regDiagnosis" placeholder="YYYY" min="1950" max="2024">
+                  </div>
+                  
+                  <button type="submit" class="btn btn-success btn-full" style="margin-bottom: 1rem;">
+                    회원가입 완료
+                  </button>
+                  
+                  <button type="button" onclick="showLoginForm()" class="btn btn-primary btn-full">
+                    로그인으로 돌아가기
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
-          <div id="carbPreview"></div>
-          <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem;">기록 저장하기</button>
-        </form>
+        </div>
       `;
-
-      // 기록 목록
-      const recordsCard = createElement('div', 'card');
-      recordsCard.innerHTML = `
-        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">
-          기록 목록 (${appState.records.length}개)
-        </h2>
-        <div id="recordsList"></div>
-      `;
-
-      appElement.appendChild(formCard);
-      appElement.appendChild(recordsCard);
-
-      // 이벤트 리스너 등록
-      setupEventListeners();
-      renderRecords();
-      updateCarbPreview();
     }
 
-    function renderRecords() {
-      const recordsList = document.getElementById('recordsList');
-      clearElement(recordsList);
-
-      if (appState.records.length === 0) {
-        recordsList.appendChild(createElement('div', 'empty-state', `
-          <h3>아직 기록이 없습니다</h3>
-          <p>위에서 첫 번째 기록을 추가해보세요!</p>
-        `));
-        return;
-      }
-
-      // 최신 순으로 정렬
-      const sortedRecords = [...appState.records].reverse();
+    // 메인 앱 렌더링
+    function renderMainApp() {
+      const user = userManager.getCurrentUser();
+      const insights = personalizationEngine.getPersonalizedInsights();
       
-      sortedRecords.forEach(record => {
-        const recordElement = createElement('div', 'record-item');
-        
-        if (appState.editingId === record.id) {
-          recordElement.innerHTML = `
-            <form id="editForm-${record.id}" class="edit-form">
-              <input type="number" name="glucose" value="${record.glucose || ''}" placeholder="혈당" required>
-              <input type="text" name="food" value="${record.food || ''}" placeholder="음식" required>
-              <input type="number" name="amount" value="${record.amount || ''}" placeholder="섭취량">
-              <input type="number" name="insulin" value="${record.insulin || ''}" placeholder="인슐린">
-              <div class="edit-actions">
-                <button type="submit" class="btn btn-success btn-small">저장</button>
-                <button type="button" class="btn btn-secondary btn-small" onclick="cancelEdit()">취소</button>
+      document.getElementById('app').innerHTML = `
+        <div class="container">
+          <header class="header">
+            <div class="header-left">
+              <h1>🍚 DiaLife Pro AI</h1>
+              <div class="welcome">안녕하세요, ${user.name}님! 개인화된 당뇨 관리를 시작하세요.</div>
+            </div>
+            <div class="header-right">
+              <div class="user-info">
+                <div class="user-name">${user.name} (${user.age || '미설정'}세)</div>
+                <div class="user-stats">
+                  총 ${user.personalizedData.totalRecords}개 기록 • 
+                  평균 혈당 ${user.personalizedData.avgGlucose || 0}mg/dL
+                </div>
               </div>
-            </form>
-          `;
-        } else {
-          recordElement.innerHTML = `
-            <div class="record-content">
-              <div class="record-info">
-                <div class="record-grid">
-                  <div>
-                    <p><strong>혈당:</strong> <span style="color: #3b82f6;">${record.glucose || 0} mg/dL</span></p>
-                    <p><strong>음식:</strong> ${record.food || ''} (${record.amount || 0}g)</p>
+              <button onclick="logout()" class="btn btn-logout">
+                🚪 로그아웃
+              </button>
+            </div>
+          </header>
+
+          ${insights.length > 0 ? `
+          <div class="personalized-insights">
+            <h2 style="margin-bottom: 1rem; color: #0c4a6e;">
+              🎯 ${user.name}님을 위한 개인화 인사이트
+            </h2>
+            <div class="insight-grid">
+              ${insights.map(insight => `
+                <div class="insight-card">
+                  <div class="insight-title">${insight.title}</div>
+                  <p style="margin-bottom: 0.5rem; font-size: 0.9rem;">${insight.description}</p>
+                  <p style="font-size: 0.85rem; color: #059669; font-weight: 500;">💡 ${insight.recommendation}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="tab-container">
+            <div class="tab-buttons">
+              <button class="tab-button ${currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">
+                📊 대시보드
+              </button>
+              <button class="tab-button ${currentTab === 'record' ? 'active' : ''}" onclick="switchTab('record')">
+                ➕ 기록 추가
+              </button>
+              <button class="tab-button ${currentTab === 'analysis' ? 'active' : ''}" onclick="switchTab('analysis')">
+                📈 개인 분석
+              </button>
+              <button class="tab-button ${currentTab === 'food' ? 'active' : ''}" onclick="switchTab('food')">
+                🍽️ 음식 패턴
+              </button>
+              <button class="tab-button ${currentTab === 'profile' ? 'active' : ''}" onclick="switchTab('profile')">
+                ⚙️ 설정
+              </button>
+            </div>
+          </div>
+
+          <div id="tabContent"></div>
+        </div>
+      `;
+
+      renderTabContent();
+    }
+
+    // 탭 컨텐츠 렌더링
+    function renderTabContent() {
+      const container = document.getElementById('tabContent');
+      const user = userManager.getCurrentUser();
+      
+      switch (currentTab) {
+        case 'dashboard':
+          renderDashboard(container, user);
+          break;
+        case 'record':
+          renderRecordForm(container, user);
+          break;
+        case 'analysis':
+          renderAnalysis(container, user);
+          break;
+        case 'food':
+          renderFoodPatterns(container, user);
+          break;
+        case 'profile':
+          renderProfile(container, user);
+          break;
+      }
+    }
+
+    function renderDashboard(container, user) {
+      const data = user.personalizedData;
+      const recentRecords = user.records.slice(-10);
+      
+      container.innerHTML = `
+        <div class="stats-dashboard">
+          <div class="stat-card">
+            <div class="stat-value">${data.avgGlucose || 0}</div>
+            <div class="stat-label">평균 혈당 (mg/dL)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${data.totalRecords}</div>
+            <div class="stat-label">총 기록 수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${data.insulinSensitivity || '계산중'}</div>
+            <div class="stat-label">인슐린 민감도 (g/단위)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${Object.keys(data.foodReactions).length}</div>
+            <div class="stat-label">분석된 음식 수</div>
+          </div>
+        </div>
+
+        <div class="main-grid">
+          <div class="card">
+            <h2>📋 최근 기록</h2>
+            <div id="recentRecords">
+              ${recentRecords.length === 0 ? 
+                '<p style="color: #6b7280; text-align: center; padding: 2rem;">아직 기록이 없습니다.</p>' :
+                recentRecords.reverse().map(record => `
+                  <div class="pattern-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <strong>${record.food}</strong>
+                      <span style="color: ${getGlucoseColor(record.glucose)}; font-weight: 600;">
+                        ${record.glucose} mg/dL
+                      </span>
+                    </div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">
+                      탄수화물 ${record.carbs}g • 인슐린 ${record.insulin}단위 • 
+                      ${new Date(record.timestamp).toLocaleDateString()}
+                    </div>
                   </div>
-                  <div>
-                    <p><strong>탄수화물:</strong> <span style="color: #10b981;">${record.carbs || 0}g</span></p>
-                    <p><strong>인슐린:</strong> ${record.insulin || 0} 단위</p>
+                `).join('')
+              }
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>⏰ 시간대별 혈당 패턴</h2>
+            <div>
+              ${Object.entries(data.timePatterns).map(([timeSlot, pattern]) => `
+                <div class="pattern-item">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <strong>${timeSlot}</strong>
+                      <div style="font-size: 0.875rem; color: #6b7280;">
+                        ${pattern.count}회 기록
+                      </div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-size: 1.25rem; font-weight: 600; color: ${getGlucoseColor(pattern.avgGlucose)};">
+                        ${pattern.avgGlucose} mg/dL
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div class="timestamp">${formatDate(record.timestamp)}</div>
+              `).join('') || '<p style="color: #6b7280;">충분한 데이터가 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRecordForm(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>➕ 새 혈당 기록 추가</h2>
+          <form id="recordForm" onsubmit="handleRecordSubmit(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="glucose">혈당 수치 (mg/dL) *</label>
+                <input type="number" id="glucose" name="glucose" required min="30" max="600" placeholder="혈당을 입력하세요">
               </div>
-              <div class="record-actions">
-                <button class="btn btn-primary btn-small" onclick="editRecord(${record.id})">수정</button>
-                <button class="btn btn-danger btn-small" onclick="deleteRecord(${record.id})">삭제</button>
+              
+              <div class="form-group">
+                <label for="food">음식 이름 *</label>
+                <input type="text" id="food" name="food" required placeholder="음식을 검색하세요" list="foodList" autocomplete="off">
+                <datalist id="foodList">
+                  ${Object.keys(KOREAN_FOOD_DATABASE).map(food => `<option value="${food}">`).join('')}
+                </datalist>
+              </div>
+              
+              <div class="form-group">
+                <label for="amount">섭취량 (g)</label>
+                <input type="number" id="amount" name="amount" min="0" step="0.1" placeholder="그램 단위">
+              </div>
+              
+              <div class="form-group">
+                <label for="insulin">인슐린 용량 (단위)</label>
+                <input type="number" id="insulin" name="insulin" min="0" step="0.5" placeholder="주사 단위">
               </div>
             </div>
-          `;
-        }
-        
-        recordsList.appendChild(recordElement);
-      });
+            
+            <div id="personalizedPreview"></div>
+            
+            <button type="submit" class="btn btn-primary btn-full">
+              💾 기록 저장하기
+            </button>
+          </form>
+        </div>
+      `;
+
+      setupRecordFormListeners();
     }
 
-    function updateCarbPreview() {
-      const foodInput = document.getElementById('food');
-      const amountInput = document.getElementById('amount');
-      const carbPreview = document.getElementById('carbPreview');
-      
-      if (!foodInput || !amountInput || !carbPreview) return;
-      
-      const food = foodInput.value;
-      const amount = amountInput.value;
-      
-      if (food && FOOD_DATABASE[food] && amount) {
-        const carbs = calculateCarbs(food, amount);
-        carbPreview.innerHTML = `
-          <div class="carb-preview">
-            예상 탄수화물: <strong>${carbs}g</strong>
-          </div>
-        `;
-      } else {
-        carbPreview.innerHTML = '';
-      }
-    }
-
-    function setupEventListeners() {
-      // 폼 제출
-      const recordForm = document.getElementById('recordForm');
-      if (recordForm) {
-        recordForm.addEventListener('submit', handleFormSubmit);
-      }
-
-      // 탄수화물 미리보기 업데이트
+    function setupRecordFormListeners() {
       const foodInput = document.getElementById('food');
       const amountInput = document.getElementById('amount');
       
       if (foodInput) {
-        foodInput.addEventListener('input', updateCarbPreview);
+        foodInput.addEventListener('input', updatePersonalizedPreview);
       }
       if (amountInput) {
-        amountInput.addEventListener('input', updateCarbPreview);
+        amountInput.addEventListener('input', updatePersonalizedPreview);
       }
     }
 
-    function handleFormSubmit(event) {
+    function updatePersonalizedPreview() {
+      const food = document.getElementById('food').value;
+      const amount = document.getElementById('amount').value;
+      const preview = document.getElementById('personalizedPreview');
+      const user = userManager.getCurrentUser();
+      
+      if (!food || !preview) return;
+      
+      let content = '';
+      
+      // 음식 영양 정보
+      if (KOREAN_FOOD_DATABASE[food] && amount) {
+        const foodData = KOREAN_FOOD_DATABASE[food];
+        const carbs = Math.round(foodData.carbs * amount / 100);
+        const protein = Math.round(foodData.protein * amount / 100);
+        const fat = Math.round(foodData.fat * amount / 100);
+        
+        content += `
+          <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 2px solid #3b82f6; border-radius: 1rem; padding: 1rem; margin-top: 1rem;">
+            <h4 style="margin-bottom: 0.75rem; color: #1e40af;">🥄 영양 정보</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem; text-align: center;">
+              <div><strong>${carbs}g</strong><br><small>탄수화물</small></div>
+              <div><strong>${protein}g</strong><br><small>단백질</small></div>
+              <div><strong>${fat}g</strong><br><small>지방</small></div>
+              <div><strong>GI ${foodData.glycemicIndex}</strong><br><small>혈당지수</small></div>
+            </div>
+        `;
+
+        // 개인화된 인슐린 제안
+        if (user.personalizedData.insulinSensitivity > 0) {
+          const suggestedInsulin = Math.round((carbs / user.personalizedData.insulinSensitivity) * 10) / 10;
+          content += `
+            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(139, 92, 246, 0.1); border-radius: 0.5rem;">
+              <strong>💡 개인화 제안:</strong> 개인 데이터 기반 인슐린 ${suggestedInsulin}단위 참고
+            </div>
+          `;
+        }
+
+        content += `</div>`;
+      }
+      
+      // 개인별 음식 히스토리
+      if (user.personalizedData.foodReactions[food]) {
+        const reaction = user.personalizedData.foodReactions[food];
+        content += `
+          <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 2px solid #0284c7; border-radius: 1rem; padding: 1rem; margin-top: 1rem;">
+            <h4 style="margin-bottom: 0.75rem; color: #0c4a6e;">📊 개인 기록 분석</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; text-align: center;">
+              <div><strong>${reaction.count}회</strong><br><small>섭취 기록</small></div>
+              <div><strong>${reaction.avgGlucose}mg/dL</strong><br><small>평균 혈당</small></div>
+              <div><strong>${reaction.avgInsulin}단위</strong><br><small>평균 인슐린</small></div>
+            </div>
+            <div class="glucose-trend">
+              <div class="trend-indicator ${getTrendClass(reaction.avgGlucose)}"></div>
+              <span style="font-size: 0.875rem;">
+                ${reaction.avgGlucose > 180 ? '주의 필요' : reaction.avgGlucose > 140 ? '보통' : '양호'}
+              </span>
+            </div>
+          </div>
+        `;
+      }
+      
+      preview.innerHTML = content;
+    }
+
+    function getTrendClass(glucose) {
+      if (glucose <= 140) return 'trend-good';
+      if (glucose <= 180) return 'trend-warning';
+      return 'trend-danger';
+    }
+
+    function getGlucoseColor(glucose) {
+      const val = parseFloat(glucose);
+      if (val < 70) return '#ef4444';
+      if (val > 180) return '#f59e0b';
+      return '#10b981';
+    }
+
+    // 이벤트 핸들러들
+    window.handleLogin = function(event) {
+      event.preventDefault();
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      const user = userManager.login(username, password);
+      if (user) {
+        renderMainApp();
+      } else {
+        alert('사용자명 또는 비밀번호가 올바르지 않습니다.');
+      }
+    };
+
+    window.handleRegister = function(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      
+      const userData = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+        name: formData.get('name'),
+        age: formData.get('age'),
+        weight: formData.get('weight'),
+        height: formData.get('height'),
+        diagnosisYear: formData.get('diagnosis')
+      };
+      
+      const user = userManager.register(userData);
+      userManager.currentUser = user;
+      renderMainApp();
+    };
+
+    window.handleRecordSubmit = async function(event) {
       event.preventDefault();
       
       const formData = new FormData(event.target);
@@ -521,7 +1265,7 @@
       }
 
       const record = {
-        id: generateId(),
+        id: Date.now() + Math.random(),
         glucose: glucose,
         food: food,
         amount: amount,
@@ -530,97 +1274,111 @@
         timestamp: new Date().toISOString()
       };
 
-      appState.records.push(record);
-      storage.set('glucose_records', appState.records);
+      userManager.addRecord(record);
       
-      // 폼 초기화
-      event.target.reset();
-      updateCarbPreview();
-      renderRecords();
-    }
-
-    // 전역 함수들 (인라인 이벤트 핸들러용)
-    window.editRecord = function(id) {
-      appState.editingId = id;
-      renderRecords();
-      
-      // 수정 폼 이벤트 리스너 등록
-      const editForm = document.getElementById(`editForm-${id}`);
-      if (editForm) {
-        editForm.addEventListener('submit', function(event) {
-          event.preventDefault();
-          
-          const formData = new FormData(event.target);
-          const glucose = formData.get('glucose');
-          const food = formData.get('food');
-          const amount = formData.get('amount') || 0;
-          const insulin = formData.get('insulin') || 0;
-          
-          if (!glucose || !food) {
-            alert('혈당과 음식 이름은 필수입니다.');
-            return;
-          }
-
-          appState.records = appState.records.map(record => 
-            record.id === id ? {
-              ...record,
-              glucose: glucose,
-              food: food,
-              amount: amount,
-              insulin: insulin,
-              carbs: calculateCarbs(food, amount)
-            } : record
-          );
-          
-          storage.set('glucose_records', appState.records);
-          appState.editingId = null;
-          renderRecords();
-        });
-      }
-    };
-
-    window.cancelEdit = function() {
-      appState.editingId = null;
-      renderRecords();
-    };
-
-    window.deleteRecord = function(id) {
-      if (!confirm('이 기록을 삭제하시겠습니까?')) return;
-      
-      appState.records = appState.records.filter(record => record.id !== id);
-      storage.set('glucose_records', appState.records);
-      renderRecords();
-    };
-
-    // 앱 초기화
-    function initApp() {
-      try {
-        // 데이터 로드
-        const savedRecords = storage.get('glucose_records');
-        if (savedRecords && Array.isArray(savedRecords)) {
-          appState.records = savedRecords;
-        }
-        
-        appState.isLoading = false;
-        renderApp();
-      } catch (error) {
-        console.error('앱 초기화 실패:', error);
-        document.getElementById('app').innerHTML = `
-          <div class="error">
-            <h3>앱 로드에 실패했습니다</h3>
-            <p>페이지를 새로고침해 주세요.</p>
-            <button onclick="window.location.reload()" class="btn btn-primary">새로고침</button>
-          </div>
+      // 개인화 추천 표시
+      const recommendations = personalizationEngine.getPersonalizedRecommendations(record);
+      if (recommendations) {
+        const aiDiv = document.createElement('div');
+        aiDiv.className = 'ai-recommendations';
+        aiDiv.innerHTML = `
+          <h3 style="margin-bottom: 1rem;">🤖 개인화 AI 분석</h3>
+          <div style="white-space: pre-line; line-height: 1.6;">${recommendations}</div>
         `;
+        event.target.appendChild(aiDiv);
       }
+      
+      event.target.reset();
+      updatePersonalizedPreview();
+      
+      // 대시보드로 이동
+      setTimeout(() => {
+        currentTab = 'dashboard';
+        renderMainApp();
+      }, 3000);
+    };
+
+    function calculateCarbs(food, amount) {
+      if (!food || !amount || !KOREAN_FOOD_DATABASE[food]) return 0;
+      const numAmount = parseFloat(amount);
+      if (isNaN(numAmount)) return 0;
+      return Math.round((KOREAN_FOOD_DATABASE[food].carbs * numAmount) / 100);
     }
 
-    // DOM 로드 완료 후 앱 시작
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initApp);
-    } else {
-      initApp();
+    window.switchTab = function(tabName) {
+      currentTab = tabName;
+      renderMainApp();
+    };
+
+    window.showRegisterForm = function() {
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+    };
+
+    window.showLoginForm = function() {
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('loginForm').style.display = 'block';
+    };
+
+    window.logout = function() {
+      if (confirm('로그아웃 하시겠습니까?')) {
+        userManager.currentUser = null;
+        renderAuthScreen();
+      }
+    };
+
+    // 추가 탭 렌더링 함수들 (간소화)
+    function renderAnalysis(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>📈 개인 혈당 패턴 분석</h2>
+          <p>개발 중인 기능입니다. 더 많은 데이터가 축적되면 고도화된 분석을 제공합니다.</p>
+        </div>
+      `;
     }
+
+    function renderFoodPatterns(container, user) {
+      const foodReactions = user.personalizedData.foodReactions;
+      
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>🍽️ 개인별 음식 반응 패턴</h2>
+          ${Object.keys(foodReactions).length === 0 ? 
+            '<p style="color: #6b7280;">아직 충분한 데이터가 없습니다.</p>' :
+            Object.entries(foodReactions)
+              .sort((a, b) => b[1].count - a[1].count)
+              .map(([food, reaction]) => `
+                <div class="pattern-item">
+                  <h4>${food}</h4>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem;">
+                    <div><strong>${reaction.count}회</strong><br><small>섭취</small></div>
+                    <div><strong>${reaction.avgGlucose}mg/dL</strong><br><small>평균 혈당</small></div>
+                    <div><strong>${reaction.avgInsulin}단위</strong><br><small>평균 인슐린</small></div>
+                  </div>
+                </div>
+              `).join('')
+          }
+        </div>
+      `;
+    }
+
+    function renderProfile(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>⚙️ 개인 설정</h2>
+          <p>프로필 설정 기능은 개발 중입니다.</p>
+          <div style="margin-top: 2rem;">
+            <h3>📊 내 데이터</h3>
+            <p>가입일: ${new Date(user.createdAt).toLocaleDateString()}</p>
+            <p>마지막 로그인: ${new Date(user.lastLogin).toLocaleDateString()}</p>
+            <p>총 기록: ${user.personalizedData.totalRecords}개</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // 앱 시작
+    document.addEventListener('DOMContentLoaded', initApp);
   </script>
 </body>
 </html>
