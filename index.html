@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiaLife Pro - 당뇨병 관리</title>
+    <title>DiaLife Pro - 통합 당뇨 관리</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -25,17 +25,63 @@
         const LogOut = () => React.createElement('span', { className: 'icon' }, '🚪');
         const Edit = () => React.createElement('span', { className: 'icon' }, '✏️');
         const Trash = () => React.createElement('span', { className: 'icon' }, '🗑️');
-        const Check = () => React.createElement('span', { className: 'icon' }, '✅');
-        const X = () => React.createElement('span', { className: 'icon' }, '❌');
+        const Search = () => React.createElement('span', { className: 'icon' }, '🔍');
+        const Clock = () => React.createElement('span', { className: 'icon' }, '⏰');
+        const Chart = () => React.createElement('span', { className: 'icon' }, '📈');
+
+        // 음식 데이터베이스
+        const FOOD_DATABASE = {
+            '밥': { carbs: 23, category: '주식' },
+            '흰밥': { carbs: 23, category: '주식' },
+            '현미밥': { carbs: 23, category: '주식' },
+            '라면': { carbs: 55, category: '면류' },
+            '우동': { carbs: 21, category: '면류' },
+            '스파게티': { carbs: 25, category: '면류' },
+            '식빵': { carbs: 47, category: '빵류' },
+            '토스트': { carbs: 47, category: '빵류' },
+            '사과': { carbs: 14, category: '과일' },
+            '바나나': { carbs: 23, category: '과일' },
+            '오렌지': { carbs: 12, category: '과일' },
+            '포도': { carbs: 17, category: '과일' },
+            '딸기': { carbs: 8, category: '과일' },
+            '수박': { carbs: 8, category: '과일' },
+            '과자': { carbs: 65, category: '간식' },
+            '쿠키': { carbs: 68, category: '간식' },
+            '케이크': { carbs: 45, category: '간식' },
+            '초콜릿': { carbs: 57, category: '간식' },
+            '콜라': { carbs: 11, category: '음료' },
+            '사이다': { carbs: 11, category: '음료' },
+            '오렌지주스': { carbs: 11, category: '음료' },
+            '우유': { carbs: 5, category: '음료' },
+            '감자': { carbs: 17, category: '채소' },
+            '고구마': { carbs: 20, category: '채소' },
+            '옥수수': { carbs: 19, category: '채소' }
+        };
 
         const DiabetesApp = () => {
             const [currentUser, setCurrentUser] = useState(null);
             const [authMode, setAuthMode] = useState('login');
             const [authData, setAuthData] = useState({ username: '', password: '', confirmPassword: '' });
-            const [bloodSugar, setBloodSugar] = useState('');
             const [notifications, setNotifications] = useState([]);
-            const [editingRecord, setEditingRecord] = useState(null);
             const [showSettings, setShowSettings] = useState(false);
+            const [currentView, setCurrentView] = useState('record'); // record, history, search
+
+            // 기록 입력 상태
+            const [preMealBG, setPreMealBG] = useState('');
+            const [foodName, setFoodName] = useState('');
+            const [foodAmount, setFoodAmount] = useState('');
+            const [insulinDose, setInsulinDose] = useState('');
+            const [calculatedCarbs, setCalculatedCarbs] = useState(0);
+            const [foodSuggestions, setFoodSuggestions] = useState([]);
+
+            // 추적 상태
+            const [activeEvent, setActiveEvent] = useState(null);
+            const [postMealBG, setPostMealBG] = useState('');
+            const [timeAfterMeal, setTimeAfterMeal] = useState('1');
+
+            // 검색 상태
+            const [searchQuery, setSearchQuery] = useState('');
+            const [searchResults, setSearchResults] = useState([]);
 
             const [userDatabase, setUserDatabase] = useState(() => {
                 try {
@@ -48,12 +94,15 @@
 
             const [userSettings, setUserSettings] = useState({
                 targetMin: 80,
-                targetMax: 180
+                targetMax: 180,
+                carbRatio: 10,
+                correctionFactor: 50
             });
 
             const [personalData, setPersonalData] = useState({
-                bloodSugars: [],
-                stats: { totalRecords: 0 }
+                mealEvents: [], // 통합 식사 이벤트
+                soloRecords: [], // 단독 혈당 기록
+                stats: { totalEvents: 0 }
             });
 
             const saveToStorage = (key, data) => {
@@ -65,16 +114,11 @@
             };
 
             const addNotification = (type, title, message) => {
-                const notification = {
-                    id: Date.now(),
-                    type,
-                    title,
-                    message
-                };
+                const notification = { id: Date.now(), type, title, message };
                 setNotifications(prev => [...prev, notification]);
                 setTimeout(() => {
                     setNotifications(prev => prev.filter(n => n.id !== notification.id));
-                }, 3000);
+                }, 4000);
             };
 
             const updateUserData = (newData) => {
@@ -96,6 +140,133 @@
                 saveToStorage('diabetesApp_users', updatedDatabase);
             };
 
+            // 음식 검색
+            const searchFood = (query) => {
+                if (!query) {
+                    setFoodSuggestions([]);
+                    return;
+                }
+                
+                const suggestions = Object.keys(FOOD_DATABASE)
+                    .filter(food => food.includes(query))
+                    .slice(0, 5)
+                    .map(food => ({ name: food, ...FOOD_DATABASE[food] }));
+                
+                setFoodSuggestions(suggestions);
+            };
+
+            // 탄수화물 계산
+            const calculateCarbs = (foodName, amount) => {
+                const food = FOOD_DATABASE[foodName];
+                if (!food || !amount) return 0;
+                return Math.round((food.carbs * parseFloat(amount)) / 100);
+            };
+
+            // 통합 식사 이벤트 기록
+            const recordMealEvent = () => {
+                if (!preMealBG || !foodName || !foodAmount) {
+                    addNotification('warning', '입력 누락', '모든 필드를 입력해주세요');
+                    return;
+                }
+
+                const carbs = calculateCarbs(foodName, foodAmount);
+                const event = {
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    preMealBG: parseFloat(preMealBG),
+                    foodName,
+                    foodAmount: parseFloat(foodAmount),
+                    carbs,
+                    insulinDose: insulinDose ? parseFloat(insulinDose) : 0,
+                    postMealBGs: [],
+                    completed: false,
+                    notes: ''
+                };
+
+                const newData = {
+                    ...personalData,
+                    mealEvents: [...personalData.mealEvents, event],
+                    stats: { totalEvents: personalData.stats.totalEvents + 1 }
+                };
+
+                setPersonalData(newData);
+                updateUserData(newData);
+                setActiveEvent(event.id);
+
+                // 입력 필드 초기화
+                setPreMealBG('');
+                setFoodName('');
+                setFoodAmount('');
+                setInsulinDose('');
+                setCalculatedCarbs(0);
+                setFoodSuggestions([]);
+
+                addNotification('success', '기록 완료', `${foodName} 식사가 기록되었습니다. 1-2시간 후 혈당을 추가로 기록하세요.`);
+            };
+
+            // 식후 혈당 추가
+            const addPostMealBG = () => {
+                if (!postMealBG || !activeEvent) return;
+
+                const newData = {
+                    ...personalData,
+                    mealEvents: personalData.mealEvents.map(event =>
+                        event.id === activeEvent ? {
+                            ...event,
+                            postMealBGs: [...event.postMealBGs, {
+                                value: parseFloat(postMealBG),
+                                hoursAfter: parseFloat(timeAfterMeal),
+                                timestamp: new Date().toISOString()
+                            }],
+                            completed: parseFloat(timeAfterMeal) >= 2
+                        } : event
+                    )
+                };
+
+                setPersonalData(newData);
+                updateUserData(newData);
+                setPostMealBG('');
+
+                if (parseFloat(timeAfterMeal) >= 2) {
+                    setActiveEvent(null);
+                    addNotification('success', '추적 완료', '식사 이벤트 기록이 완료되었습니다.');
+                } else {
+                    addNotification('info', '기록 추가', `${timeAfterMeal}시간 후 혈당이 기록되었습니다.`);
+                }
+            };
+
+            // 음식별 기록 검색
+            const searchFoodHistory = (query) => {
+                if (!query) {
+                    setSearchResults([]);
+                    return;
+                }
+
+                const results = personalData.mealEvents.filter(event =>
+                    event.foodName.includes(query)
+                ).map(event => ({
+                    ...event,
+                    bgChange: event.postMealBGs.length > 0 ? 
+                        event.postMealBGs[event.postMealBGs.length - 1].value - event.preMealBG : null,
+                    maxBG: event.postMealBGs.length > 0 ? 
+                        Math.max(...event.postMealBGs.map(bg => bg.value)) : null
+                }));
+
+                setSearchResults(results);
+            };
+
+            // 혈당 상태 평가
+            const getBGStatus = (bg) => {
+                const bgNum = parseFloat(bg);
+                if (bgNum < userSettings.targetMin) {
+                    return { color: 'text-orange-600', bgColor: 'bg-orange-50', status: '낮음' };
+                }
+                if (bgNum > userSettings.targetMax) {
+                    return { color: 'text-red-600', bgColor: 'bg-red-50', status: '높음' };
+                }
+                return { color: 'text-green-600', bgColor: 'bg-green-50', status: '좋음' };
+            };
+
             const handleAuth = () => {
                 if (authMode === 'register') {
                     if (authData.password !== authData.confirmPassword) {
@@ -114,11 +285,7 @@
                         data: personalData
                     };
 
-                    const updatedDatabase = {
-                        ...userDatabase,
-                        [authData.username]: newUser
-                    };
-
+                    const updatedDatabase = { ...userDatabase, [authData.username]: newUser };
                     setUserDatabase(updatedDatabase);
                     setCurrentUser(newUser);
                     saveToStorage('diabetesApp_users', updatedDatabase);
@@ -137,80 +304,20 @@
                 setAuthData({ username: '', password: '', confirmPassword: '' });
             };
 
-            const addBloodSugarRecord = (value) => {
-                const record = {
-                    id: Date.now(),
-                    value: parseFloat(value),
-                    timestamp: new Date().toISOString()
-                };
+            useEffect(() => {
+                searchFood(foodName);
+            }, [foodName]);
 
-                const newData = {
-                    ...personalData,
-                    bloodSugars: [...personalData.bloodSugars, record],
-                    stats: {
-                        totalRecords: personalData.stats.totalRecords + 1
-                    }
-                };
-
-                setPersonalData(newData);
-                updateUserData(newData);
-
-                const bgNum = parseFloat(value);
-                if (bgNum < userSettings.targetMin) {
-                    addNotification('warning', '저혈당 주의', '간식을 드세요!');
-                } else if (bgNum > userSettings.targetMax) {
-                    addNotification('warning', '고혈당 주의', '물을 충분히 드세요!');
-                } else {
-                    addNotification('success', '좋아요!', '목표 범위 안에 있습니다!');
+            useEffect(() => {
+                if (foodName && FOOD_DATABASE[foodName] && foodAmount) {
+                    setCalculatedCarbs(calculateCarbs(foodName, foodAmount));
                 }
-            };
+            }, [foodName, foodAmount]);
 
-            const deleteRecord = (id) => {
-                if (confirm('이 기록을 삭제하시겠습니까?')) {
-                    const newData = {
-                        ...personalData,
-                        bloodSugars: personalData.bloodSugars.filter(record => record.id !== id),
-                        stats: {
-                            totalRecords: Math.max(0, personalData.stats.totalRecords - 1)
-                        }
-                    };
-                    setPersonalData(newData);
-                    updateUserData(newData);
-                    addNotification('info', '삭제 완료', '기록이 삭제되었습니다.');
-                }
-            };
+            useEffect(() => {
+                searchFoodHistory(searchQuery);
+            }, [searchQuery, personalData.mealEvents]);
 
-            const editRecord = (id, newValue) => {
-                const newData = {
-                    ...personalData,
-                    bloodSugars: personalData.bloodSugars.map(record => 
-                        record.id === id ? { ...record, value: parseFloat(newValue) } : record
-                    )
-                };
-                setPersonalData(newData);
-                updateUserData(newData);
-                setEditingRecord(null);
-                addNotification('success', '수정 완료', '기록이 업데이트되었습니다.');
-            };
-
-            const getBGStatus = (bg) => {
-                const bgNum = parseFloat(bg);
-                if (bgNum < userSettings.targetMin) {
-                    return { color: 'text-orange-600', bgColor: 'bg-orange-50', status: '낮음' };
-                }
-                if (bgNum > userSettings.targetMax) {
-                    return { color: 'text-red-600', bgColor: 'bg-red-50', status: '높음' };
-                }
-                return { color: 'text-green-600', bgColor: 'bg-green-50', status: '좋음' };
-            };
-
-            const handleLogout = () => {
-                setCurrentUser(null);
-                setNotifications([]);
-                setShowSettings(false);
-            };
-
-            // 로그인 화면
             if (!currentUser) {
                 return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center" },
                     React.createElement('div', { className: "bg-white p-8 rounded-2xl shadow-xl border max-w-md w-full" },
@@ -219,7 +326,7 @@
                                 React.createElement(Heart, { className: "text-3xl" })
                             ),
                             React.createElement('h1', { className: "text-2xl font-bold text-gray-800" }, "DiaLife Pro"),
-                            React.createElement('p', { className: "text-gray-600 mt-2" }, "쉽고 안전한 당뇨 관리")
+                            React.createElement('p', { className: "text-gray-600 mt-2" }, "통합 당뇨 관리 시스템")
                         ),
                         React.createElement('div', { className: "space-y-6" },
                             React.createElement('div', { className: "flex bg-gray-100 rounded-lg p-1" },
@@ -268,56 +375,6 @@
                 );
             }
 
-            // 설정 화면
-            if (showSettings) {
-                return React.createElement('div', { className: "min-h-screen bg-gray-50" },
-                    React.createElement('header', { className: "bg-white shadow-sm border-b" },
-                        React.createElement('div', { className: "max-w-4xl mx-auto px-4 py-4" },
-                            React.createElement('div', { className: "flex items-center justify-between" },
-                                React.createElement('h1', { className: "text-xl font-bold text-gray-800" }, "설정"),
-                                React.createElement('button', {
-                                    onClick: () => setShowSettings(false),
-                                    className: "bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
-                                }, "돌아가기")
-                            )
-                        )
-                    ),
-                    React.createElement('main', { className: "max-w-4xl mx-auto px-4 py-8" },
-                        React.createElement('div', { className: "bg-white p-6 rounded-2xl shadow-lg border" },
-                            React.createElement('h3', { className: "text-lg font-bold text-gray-800 mb-4" }, "혈당 목표 범위"),
-                            React.createElement('div', { className: "grid md:grid-cols-2 gap-4" },
-                                React.createElement('div', null,
-                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "최소값 (mg/dL)"),
-                                    React.createElement('input', {
-                                        type: "number",
-                                        value: userSettings.targetMin,
-                                        onChange: (e) => setUserSettings(prev => ({ ...prev, targetMin: parseInt(e.target.value) })),
-                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                    })
-                                ),
-                                React.createElement('div', null,
-                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "최대값 (mg/dL)"),
-                                    React.createElement('input', {
-                                        type: "number",
-                                        value: userSettings.targetMax,
-                                        onChange: (e) => setUserSettings(prev => ({ ...prev, targetMax: parseInt(e.target.value) })),
-                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                    })
-                                )
-                            ),
-                            React.createElement('button', {
-                                onClick: () => {
-                                    updateUserData(personalData);
-                                    addNotification('success', '저장 완료', '설정이 저장되었습니다');
-                                },
-                                className: "mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg"
-                            }, "저장")
-                        )
-                    )
-                );
-            }
-
-            // 메인 화면
             return React.createElement('div', { className: "min-h-screen bg-gray-50" },
                 // 알림
                 notifications.length > 0 && React.createElement('div', { className: "fixed top-4 right-4 z-50 space-y-2" },
@@ -344,25 +401,42 @@
                                 React.createElement(Heart, { className: "text-2xl" }),
                                 React.createElement('div', null,
                                     React.createElement('h1', { className: "text-xl font-bold text-gray-800" }, "DiaLife Pro"),
-                                    React.createElement('p', { className: "text-sm text-gray-600" }, currentUser.username + '님의 당뇨 관리')
+                                    React.createElement('p', { className: "text-sm text-gray-600" }, currentUser.username + '님의 통합 당뇨 관리')
                                 )
                             ),
-                            React.createElement('div', { className: "flex items-center gap-3" },
-                                React.createElement('button', {
-                                    onClick: () => setShowSettings(true),
-                                    className: "flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200"
-                                },
-                                    React.createElement(Settings),
-                                    "설정"
-                                ),
-                                React.createElement('button', {
-                                    onClick: handleLogout,
-                                    className: "flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200"
-                                },
-                                    React.createElement(LogOut),
-                                    "로그아웃"
-                                )
+                            React.createElement('button', {
+                                onClick: () => setCurrentUser(null),
+                                className: "flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200"
+                            },
+                                React.createElement(LogOut),
+                                "로그아웃"
                             )
+                        )
+                    )
+                ),
+
+                // 네비게이션
+                React.createElement('nav', { className: "bg-white border-b" },
+                    React.createElement('div', { className: "max-w-6xl mx-auto px-4" },
+                        React.createElement('div', { className: "flex space-x-8" },
+                            React.createElement('button', {
+                                onClick: () => setCurrentView('record'),
+                                className: `py-4 px-2 border-b-2 font-medium text-sm ${
+                                    currentView === 'record' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`
+                            }, "📝 새 기록"),
+                            React.createElement('button', {
+                                onClick: () => setCurrentView('history'),
+                                className: `py-4 px-2 border-b-2 font-medium text-sm ${
+                                    currentView === 'history' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`
+                            }, "📊 기록 목록"),
+                            React.createElement('button', {
+                                onClick: () => setCurrentView('search'),
+                                className: `py-4 px-2 border-b-2 font-medium text-sm ${
+                                    currentView === 'search' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`
+                            }, "🔍 음식별 분석")
                         )
                     )
                 ),
@@ -371,114 +445,304 @@
                 React.createElement('main', { className: "max-w-6xl mx-auto px-4 py-8" },
                     // 통계
                     React.createElement('div', { className: "bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border mb-6" },
-                        React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', { className: "grid md:grid-cols-3 gap-4" },
                             React.createElement('div', null,
-                                React.createElement('p', { className: "text-blue-600 font-medium" }, "총 기록"),
-                                React.createElement('p', { className: "text-3xl font-bold text-blue-800" }, personalData.stats.totalRecords),
-                                React.createElement('p', { className: "text-sm text-blue-600" }, "번 측정")
+                                React.createElement('p', { className: "text-blue-600 font-medium" }, "총 식사 기록"),
+                                React.createElement('p', { className: "text-2xl font-bold text-blue-800" }, personalData.stats.totalEvents),
+                                React.createElement('p', { className: "text-sm text-blue-600" }, "번")
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('p', { className: "text-blue-600 font-medium" }, "완료된 추적"),
+                                React.createElement('p', { className: "text-2xl font-bold text-blue-800" }, 
+                                    personalData.mealEvents.filter(e => e.completed).length
+                                ),
+                                React.createElement('p', { className: "text-sm text-blue-600" }, "건")
                             ),
                             React.createElement('div', null,
                                 React.createElement('p', { className: "text-blue-600 font-medium" }, "목표 범위"),
-                                React.createElement('p', { className: "text-lg font-bold text-blue-800" }, userSettings.targetMin + ' - ' + userSettings.targetMax),
+                                React.createElement('p', { className: "text-lg font-bold text-blue-800" }, 
+                                    userSettings.targetMin + ' - ' + userSettings.targetMax
+                                ),
                                 React.createElement('p', { className: "text-sm text-blue-600" }, "mg/dL")
                             )
                         )
                     ),
 
-                    // 혈당 입력
-                    React.createElement('div', { className: "bg-white p-6 rounded-2xl shadow-lg border mb-6" },
-                        React.createElement('h3', { className: "text-lg font-bold text-gray-800 mb-4" }, "혈당 기록하기"),
-                        React.createElement('div', { className: "flex gap-3 items-end" },
-                            React.createElement('div', { className: "flex-1" },
-                                React.createElement('input', {
-                                    type: "number",
-                                    value: bloodSugar,
-                                    onChange: (e) => setBloodSugar(e.target.value),
-                                    placeholder: "혈당 수치 (mg/dL)",
-                                    className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg"
-                                })
+                    // 새 기록 입력
+                    currentView === 'record' && React.createElement('div', { className: "space-y-6" },
+                        React.createElement('div', { className: "bg-white p-6 rounded-2xl shadow-lg border" },
+                            React.createElement('h3', { className: "text-lg font-bold text-gray-800 mb-4" }, "통합 식사 기록"),
+                            React.createElement('div', { className: "grid md:grid-cols-2 gap-6" },
+                                React.createElement('div', { className: "space-y-4" },
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "식사 전 혈당 (mg/dL)"),
+                                        React.createElement('input', {
+                                            type: "number",
+                                            value: preMealBG,
+                                            onChange: (e) => setPreMealBG(e.target.value),
+                                            className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500",
+                                            placeholder: "예: 120"
+                                        })
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "인슐린 용량 (단위, 선택사항)"),
+                                        React.createElement('input', {
+                                            type: "number",
+                                            value: insulinDose,
+                                            onChange: (e) => setInsulinDose(e.target.value),
+                                            className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500",
+                                            placeholder: "예: 5"
+                                        })
+                                    )
+                                ),
+                                React.createElement('div', { className: "space-y-4" },
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "음식 이름"),
+                                        React.createElement('div', { className: "relative" },
+                                            React.createElement('input', {
+                                                type: "text",
+                                                value: foodName,
+                                                onChange: (e) => setFoodName(e.target.value),
+                                                className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500",
+                                                placeholder: "예: 밥, 사과, 라면"
+                                            }),
+                                            foodSuggestions.length > 0 && React.createElement('div', { className: "absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg mt-1 shadow-lg z-10" },
+                                                foodSuggestions.map((food, index) =>
+                                                    React.createElement('button', {
+                                                        key: index,
+                                                        onClick: () => {
+                                                            setFoodName(food.name);
+                                                            setFoodSuggestions([]);
+                                                        },
+                                                        className: "w-full text-left px-4 py-2 hover:bg-gray-50 border-b last:border-b-0"
+                                                    },
+                                                        React.createElement('span', { className: "font-medium" }, food.name),
+                                                        React.createElement('span', { className: "text-sm text-gray-500 ml-2" }, 
+                                                            '(' + food.category + ', ' + food.carbs + 'g/100g)'
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "섭취량 (g)"),
+                                        React.createElement('input', {
+                                            type: "number",
+                                            value: foodAmount,
+                                            onChange: (e) => setFoodAmount(e.target.value),
+                                            className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500",
+                                            placeholder: "예: 150"
+                                        })
+                                    )
+                                )
+                            ),
+                            calculatedCarbs > 0 && React.createElement('div', { className: "mt-4 bg-green-50 border border-green-200 p-4 rounded-lg" },
+                                React.createElement('p', { className: "font-medium text-green-800" },
+                                    '계산된 탄수화물: ' + calculatedCarbs + 'g'
+                                ),
+                                insulinDose && React.createElement('p', { className: "text-sm text-green-600 mt-1" },
+                                    '기록될 인슐린: ' + insulinDose + '단위'
+                                )
                             ),
                             React.createElement('button', {
-                                onClick: () => {
-                                    if (bloodSugar) {
-                                        addBloodSugarRecord(bloodSugar);
-                                        setBloodSugar('');
-                                    }
-                                },
-                                disabled: !bloodSugar,
-                                className: "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium"
-                            }, "기록하기")
+                                onClick: recordMealEvent,
+                                disabled: !preMealBG || !foodName || !foodAmount,
+                                className: "w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-medium"
+                            }, "식사 기록 시작")
                         ),
-                        bloodSugar && React.createElement('div', { className: 'mt-3 p-3 rounded-lg ' + getBGStatus(bloodSugar).bgColor },
-                            React.createElement('p', { className: 'font-medium ' + getBGStatus(bloodSugar).color },
-                                getBGStatus(bloodSugar).status + ' 상태입니다'
+
+                        // 진행 중인 추적
+                        activeEvent && React.createElement('div', { className: "bg-yellow-50 border border-yellow-200 p-6 rounded-2xl" },
+                            React.createElement('h3', { className: "text-lg font-bold text-yellow-800 mb-4 flex items-center gap-2" },
+                                React.createElement(Clock),
+                                "혈당 추적 중"
+                            ),
+                            React.createElement('p', { className: "text-yellow-700 mb-4" },
+                                "식사 후 1-2시간 간격으로 혈당을 측정해 주세요"
+                            ),
+                            React.createElement('div', { className: "flex gap-3" },
+                                React.createElement('input', {
+                                    type: "number",
+                                    value: postMealBG,
+                                    onChange: (e) => setPostMealBG(e.target.value),
+                                    placeholder: "식후 혈당",
+                                    className: "flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                                }),
+                                React.createElement('select', {
+                                    value: timeAfterMeal,
+                                    onChange: (e) => setTimeAfterMeal(e.target.value),
+                                    className: "px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                                },
+                                    React.createElement('option', { value: "1" }, "1시간 후"),
+                                    React.createElement('option', { value: "1.5" }, "1.5시간 후"),
+                                    React.createElement('option', { value: "2" }, "2시간 후")
+                                ),
+                                React.createElement('button', {
+                                    onClick: addPostMealBG,
+                                    disabled: !postMealBG,
+                                    className: "bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium"
+                                }, "기록")
                             )
                         )
                     ),
 
                     // 기록 목록
-                    React.createElement('div', { className: "bg-white p-6 rounded-2xl shadow-lg border" },
-                        React.createElement('h4', { className: "font-bold text-gray-800 mb-4 text-lg" }, "내 혈당 기록"),
-                        React.createElement('div', { className: "space-y-3" },
-                            personalData.bloodSugars.length > 0 ? personalData.bloodSugars.slice(-10).reverse().map((record) => {
-                                const status = getBGStatus(record.value);
-                                return React.createElement('div', { 
-                                    key: record.id, 
-                                    className: 'flex items-center justify-between p-4 rounded-lg border ' + status.bgColor
-                                },
-                                    React.createElement('div', { className: "flex-1" },
-                                        editingRecord === record.id ? 
-                                            React.createElement('div', { className: "flex gap-2" },
-                                                React.createElement('input', {
-                                                    type: "number",
-                                                    defaultValue: record.value,
-                                                    className: "px-3 py-1 border border-gray-300 rounded w-24",
-                                                    id: 'edit-' + record.id,
-                                                    onKeyPress: (e) => {
-                                                        if (e.key === 'Enter') {
-                                                            editRecord(record.id, e.target.value);
-                                                        }
-                                                    }
-                                                }),
-                                                React.createElement('button', {
-                                                    onClick: () => {
-                                                        const input = document.getElementById('edit-' + record.id);
-                                                        editRecord(record.id, input.value);
-                                                    },
-                                                    className: "text-green-600 hover:text-green-800"
-                                                }, React.createElement(Check)),
-                                                React.createElement('button', {
-                                                    onClick: () => setEditingRecord(null),
-                                                    className: "text-gray-600 hover:text-gray-800"
-                                                }, React.createElement(X))
-                                            ) :
-                                            React.createElement('div', null,
-                                                React.createElement('p', { className: 'font-bold text-lg ' + status.color }, record.value + ' mg/dL'),
-                                                React.createElement('p', { className: "text-sm text-gray-600" }, 
-                                                    new Date(record.timestamp).toLocaleString('ko-KR', {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })
-                                                ),
-                                                React.createElement('span', { className: 'text-sm font-medium ' + status.color }, status.status)
-                                            )
+                    currentView === 'history' && React.createElement('div', { className: "space-y-4" },
+                        personalData.mealEvents.length > 0 ? personalData.mealEvents.slice().reverse().map((event) => {
+                            const bgTrend = event.postMealBGs.length > 0 ? 
+                                event.postMealBGs[event.postMealBGs.length - 1].value - event.preMealBG : null;
+                            return React.createElement('div', { 
+                                key: event.id, 
+                                className: "bg-white p-6 rounded-2xl shadow-lg border"
+                            },
+                                React.createElement('div', { className: "flex justify-between items-start mb-4" },
+                                    React.createElement('div', null,
+                                        React.createElement('h4', { className: "font-bold text-lg text-gray-800" }, event.foodName),
+                                        React.createElement('p', { className: "text-sm text-gray-600" },
+                                            new Date(event.timestamp).toLocaleString('ko-KR')
+                                        )
                                     ),
-                                    editingRecord !== record.id && React.createElement('div', { className: "flex gap-2" },
-                                        React.createElement('button', {
-                                            onClick: () => setEditingRecord(record.id),
-                                            className: "p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg"
-                                        }, React.createElement(Edit)),
-                                        React.createElement('button', {
-                                            onClick: () => deleteRecord(record.id),
-                                            className: "p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg"
-                                        }, React.createElement(Trash))
+                                    React.createElement('span', { 
+                                        className: `px-3 py-1 rounded-full text-xs font-medium ${
+                                            event.completed ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                                        }`
+                                    }, event.completed ? '완료' : '진행중')
+                                ),
+                                React.createElement('div', { className: "grid md:grid-cols-3 gap-4 text-sm" },
+                                    React.createElement('div', null,
+                                        React.createElement('p', { className: "text-gray-600" }, "섭취량"),
+                                        React.createElement('p', { className: "font-medium" }, event.foodAmount + 'g'),
+                                        React.createElement('p', { className: "text-gray-600" }, "탄수화물"),
+                                        React.createElement('p', { className: "font-medium" }, event.carbs + 'g')
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('p', { className: "text-gray-600" }, "식전 혈당"),
+                                        React.createElement('p', { className: "font-medium" }, event.preMealBG + ' mg/dL'),
+                                        event.insulinDose > 0 && React.createElement('div', null,
+                                            React.createElement('p', { className: "text-gray-600" }, "인슐린"),
+                                            React.createElement('p', { className: "font-medium" }, event.insulinDose + ' 단위')
+                                        )
+                                    ),
+                                    React.createElement('div', null,
+                                        event.postMealBGs.length > 0 && React.createElement('div', null,
+                                            React.createElement('p', { className: "text-gray-600" }, "식후 혈당"),
+                                            event.postMealBGs.map((bg, index) =>
+                                                React.createElement('p', { key: index, className: "font-medium" },
+                                                    bg.hoursAfter + '시간: ' + bg.value + 'mg/dL'
+                                                )
+                                            ),
+                                            bgTrend && React.createElement('p', { 
+                                                className: `mt-1 font-medium ${
+                                                    bgTrend > 0 ? 'text-red-600' : 'text-green-600'
+                                                }`
+                                            }, '변화: ' + (bgTrend > 0 ? '+' : '') + bgTrend + 'mg/dL')
+                                        )
                                     )
-                                );
-                            }) : React.createElement('div', { className: "text-center py-8 text-gray-500" },
-                                React.createElement('p', { className: "text-lg" }, "아직 기록이 없어요"),
-                                React.createElement('p', { className: "text-sm mt-1" }, "첫 번째 혈당을 기록해보세요!")
+                                )
+                            );
+                        }) : React.createElement('div', { className: "text-center py-12 text-gray-500" },
+                            React.createElement('p', { className: "text-lg" }, "아직 기록이 없습니다"),
+                            React.createElement('p', { className: "text-sm mt-1" }, "첫 번째 식사를 기록해보세요!")
+                        )
+                    ),
+
+                    // 음식별 검색 및 분석
+                    currentView === 'search' && React.createElement('div', { className: "space-y-6" },
+                        React.createElement('div', { className: "bg-white p-6 rounded-2xl shadow-lg border" },
+                            React.createElement('h3', { className: "text-lg font-bold text-gray-800 mb-4 flex items-center gap-2" },
+                                React.createElement(Search),
+                                "음식별 기록 검색"
+                            ),
+                            React.createElement('input', {
+                                type: "text",
+                                value: searchQuery,
+                                onChange: (e) => setSearchQuery(e.target.value),
+                                placeholder: "음식 이름을 검색하세요 (예: 밥, 사과)",
+                                className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            })
+                        ),
+
+                        searchResults.length > 0 && React.createElement('div', { className: "bg-white p-6 rounded-2xl shadow-lg border" },
+                            React.createElement('h4', { className: "font-bold text-gray-800 mb-4 flex items-center gap-2" },
+                                React.createElement(Chart),
+                                `"${searchQuery}" 검색 결과 (${searchResults.length}건)`
+                            ),
+                            React.createElement('div', { className: "space-y-4" },
+                                searchResults.map((result, index) =>
+                                    React.createElement('div', { 
+                                        key: result.id, 
+                                        className: "p-4 border rounded-lg bg-gray-50"
+                                    },
+                                        React.createElement('div', { className: "grid md:grid-cols-4 gap-4 text-sm" },
+                                            React.createElement('div', null,
+                                                React.createElement('p', { className: "text-gray-600" }, "날짜"),
+                                                React.createElement('p', { className: "font-medium" },
+                                                    new Date(result.timestamp).toLocaleDateString('ko-KR')
+                                                ),
+                                                React.createElement('p', { className: "text-gray-600 mt-1" }, "섭취량"),
+                                                React.createElement('p', { className: "font-medium" }, result.foodAmount + 'g')
+                                            ),
+                                            React.createElement('div', null,
+                                                React.createElement('p', { className: "text-gray-600" }, "식전 혈당"),
+                                                React.createElement('p', { className: "font-medium" }, result.preMealBG + ' mg/dL'),
+                                                result.insulinDose > 0 && React.createElement('div', null,
+                                                    React.createElement('p', { className: "text-gray-600 mt-1" }, "인슐린"),
+                                                    React.createElement('p', { className: "font-medium" }, result.insulinDose + ' 단위')
+                                                )
+                                            ),
+                                            React.createElement('div', null,
+                                                result.maxBG && React.createElement('div', null,
+                                                    React.createElement('p', { className: "text-gray-600" }, "최고 혈당"),
+                                                    React.createElement('p', { className: "font-medium" }, result.maxBG + ' mg/dL'),
+                                                    React.createElement('p', { className: "text-gray-600 mt-1" }, "탄수화물"),
+                                                    React.createElement('p', { className: "font-medium" }, result.carbs + 'g')
+                                                )
+                                            ),
+                                            React.createElement('div', null,
+                                                result.bgChange !== null && React.createElement('div', null,
+                                                    React.createElement('p', { className: "text-gray-600" }, "혈당 변화"),
+                                                    React.createElement('p', { 
+                                                        className: `font-medium ${
+                                                            result.bgChange > 0 ? 'text-red-600' : 'text-green-600'
+                                                        }`
+                                                    }, (result.bgChange > 0 ? '+' : '') + result.bgChange + ' mg/dL')
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            // 간단한 패턴 분석
+                            React.createElement('div', { className: "mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg" },
+                                React.createElement('h5', { className: "font-medium text-blue-800 mb-2" }, "패턴 분석"),
+                                React.createElement('div', { className: "grid md:grid-cols-3 gap-4 text-sm" },
+                                    React.createElement('div', null,
+                                        React.createElement('p', { className: "text-blue-600" }, "평균 섭취량"),
+                                        React.createElement('p', { className: "font-medium" },
+                                            Math.round(searchResults.reduce((sum, r) => sum + r.foodAmount, 0) / searchResults.length) + 'g'
+                                        )
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('p', { className: "text-blue-600" }, "평균 탄수화물"),
+                                        React.createElement('p', { className: "font-medium" },
+                                            Math.round(searchResults.reduce((sum, r) => sum + r.carbs, 0) / searchResults.length) + 'g'
+                                        )
+                                    ),
+                                    React.createElement('div', null,
+                                        searchResults.filter(r => r.bgChange !== null).length > 0 && React.createElement('div', null,
+                                            React.createElement('p', { className: "text-blue-600" }, "평균 혈당 변화"),
+                                            React.createElement('p', { className: "font-medium" },
+                                                Math.round(
+                                                    searchResults
+                                                        .filter(r => r.bgChange !== null)
+                                                        .reduce((sum, r) => sum + r.bgChange, 0) / 
+                                                    searchResults.filter(r => r.bgChange !== null).length
+                                                ) + ' mg/dL'
+                                            )
+                                        )
+                                    )
+                                )
                             )
                         )
                     )
