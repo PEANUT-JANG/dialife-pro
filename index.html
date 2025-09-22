@@ -4,33 +4,266 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DiaLife Pro - 통합 당뇨 관리</title>
-  <!-- React Production 버전 사용 -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* 로딩 중 표시를 위한 기본 스타일 */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f8fafc;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      color: #6b7280;
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.25rem;
+    }
+
+    .form-group input, 
+    .form-group select {
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #2563eb;
+    }
+
+    .btn-success {
+      background-color: #10b981;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #059669;
+    }
+
+    .btn-secondary {
+      background-color: #6b7280;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: #4b5563;
+    }
+
+    .btn-danger {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #dc2626;
+    }
+
+    .btn-small {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .carb-preview {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background-color: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 0.5rem;
+      color: #1e40af;
+    }
+
+    .record-list {
+      margin-top: 2rem;
+    }
+
+    .record-item {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .record-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .record-info {
+      flex: 1;
+    }
+
+    .record-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .record-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: 1rem;
+    }
+
+    .timestamp {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #6b7280;
+    }
+
+    .empty-state h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .edit-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 0.5rem;
+      grid-column: 1 / -1;
+    }
+
     .loading {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      font-size: 18px;
+      height: 50vh;
+      font-size: 1.125rem;
+      color: #6b7280;
+    }
+
+    .error {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem 0.5rem;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .record-content {
+        flex-direction: column;
+      }
+      
+      .record-actions {
+        margin-left: 0;
+        margin-top: 1rem;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="root">
-    <div class="loading">앱을 로딩 중입니다...</div>
+  <div class="container">
+    <header class="header">
+      <h1>DiaLife Pro 🍚</h1>
+      <p>당뇨 관리를 위한 혈당 기록 앱</p>
+    </header>
+
+    <div id="app">
+      <div class="loading">앱을 로딩 중입니다...</div>
+    </div>
   </div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useCallback } = React;
-
+  <script>
     // 음식 데이터베이스
     const FOOD_DATABASE = {
       '밥': { carbs: 23, category: '주식' },
@@ -40,425 +273,353 @@
       '초콜릿': { carbs: 57, category: '간식' },
       '빵': { carbs: 50, category: '주식' },
       '우유': { carbs: 5, category: '유제품' },
-      '감자': { carbs: 17, category: '채소' }
+      '감자': { carbs: 17, category: '채소' },
+      '고구마': { carbs: 20, category: '채소' },
+      '닭가슴살': { carbs: 0, category: '단백질' }
     };
 
-    // localStorage 안전 접근 함수들
-    const safeLocalStorage = {
-      getItem: (key) => {
+    // 앱 상태
+    let appState = {
+      records: [],
+      editingId: null,
+      isLoading: true
+    };
+
+    // localStorage 안전 접근
+    const storage = {
+      get: function(key) {
         try {
-          if (typeof Storage !== 'undefined' && window.localStorage) {
-            return localStorage.getItem(key);
+          if (typeof Storage !== 'undefined') {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : null;
           }
         } catch (error) {
-          console.warn('localStorage 접근 실패:', error);
+          console.warn('Storage 읽기 실패:', error);
         }
         return null;
       },
-      setItem: (key, value) => {
+      set: function(key, value) {
         try {
-          if (typeof Storage !== 'undefined' && window.localStorage) {
-            localStorage.setItem(key, value);
+          if (typeof Storage !== 'undefined') {
+            localStorage.setItem(key, JSON.stringify(value));
             return true;
           }
         } catch (error) {
-          console.warn('localStorage 저장 실패:', error);
+          console.warn('Storage 저장 실패:', error);
         }
         return false;
       }
     };
 
-    const App = () => {
-      // 상태 초기화
-      const [records, setRecords] = useState([]);
-      const [isLoaded, setIsLoaded] = useState(false);
-      const [newRecord, setNewRecord] = useState({
-        glucose: '', 
-        food: '', 
-        amount: '', 
-        insulin: '', 
-        timestamp: ''
+    // 유틸리티 함수들
+    function calculateCarbs(food, amount) {
+      if (!food || !amount || !FOOD_DATABASE[food]) return 0;
+      const numAmount = parseFloat(amount);
+      if (isNaN(numAmount)) return 0;
+      return Math.round((FOOD_DATABASE[food].carbs * numAmount) / 100);
+    }
+
+    function formatDate(timestamp) {
+      return new Date(timestamp).toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       });
-      const [editingId, setEditingId] = useState(null);
-      const [editData, setEditData] = useState({ 
-        glucose: '', 
-        food: '', 
-        amount: '', 
-        insulin: '' 
-      });
+    }
 
-      // 데이터 로드
-      useEffect(() => {
-        try {
-          const saved = safeLocalStorage.getItem('glucose_records');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-              setRecords(parsed);
-            }
-          }
-        } catch (error) {
-          console.warn('데이터 로드 실패:', error);
-        } finally {
-          setIsLoaded(true);
-        }
-      }, []);
+    function generateId() {
+      return Date.now() + Math.random();
+    }
 
-      // 현재 시간 업데이트
-      useEffect(() => {
-        const updateTimestamp = () => {
-          setNewRecord(prev => ({
-            ...prev,
-            timestamp: new Date().toISOString()
-          }));
-        };
-        
-        updateTimestamp();
-        const interval = setInterval(updateTimestamp, 60000); // 1분마다 업데이트
-        
-        return () => clearInterval(interval);
-      }, []);
+    // DOM 조작 함수들
+    function createElement(tag, className, content) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (content) element.innerHTML = content;
+      return element;
+    }
 
-      // 탄수화물 계산
-      const calculateCarbs = useCallback((food, amount) => {
-        if (!food || !amount || !FOOD_DATABASE[food]) return 0;
-        const numAmount = parseFloat(amount);
-        if (isNaN(numAmount)) return 0;
-        return Math.round((FOOD_DATABASE[food].carbs * numAmount) / 100);
-      }, []);
-
-      // 기록 저장
-      const handleSave = useCallback(() => {
-        if (!newRecord.glucose || !newRecord.food) {
-          alert('혈당과 음식 이름은 필수입니다.');
-          return;
-        }
-
-        const record = {
-          ...newRecord,
-          id: Date.now() + Math.random(), // 더 고유한 ID 생성
-          carbs: calculateCarbs(newRecord.food, newRecord.amount),
-          timestamp: new Date().toISOString()
-        };
-        
-        const updated = [...records, record];
-        setRecords(updated);
-        
-        // localStorage에 저장
-        safeLocalStorage.setItem('glucose_records', JSON.stringify(updated));
-        
-        // 입력 필드 초기화
-        setNewRecord({ 
-          glucose: '', 
-          food: '', 
-          amount: '', 
-          insulin: '', 
-          timestamp: new Date().toISOString() 
-        });
-      }, [newRecord, records, calculateCarbs]);
-
-      // 기록 삭제
-      const handleDelete = useCallback((id) => {
-        if (!confirm('이 기록을 삭제하시겠습니까?')) return;
-        
-        const updated = records.filter(r => r.id !== id);
-        setRecords(updated);
-        safeLocalStorage.setItem('glucose_records', JSON.stringify(updated));
-      }, [records]);
-
-      // 수정 시작
-      const startEdit = useCallback((record) => {
-        setEditingId(record.id);
-        setEditData({
-          glucose: record.glucose || '',
-          food: record.food || '',
-          amount: record.amount || '',
-          insulin: record.insulin || ''
-        });
-      }, []);
-
-      // 수정 확인
-      const confirmEdit = useCallback((id) => {
-        const updated = records.map(r =>
-          r.id === id ? {
-            ...r,
-            ...editData,
-            carbs: calculateCarbs(editData.food, editData.amount)
-          } : r
-        );
-        setRecords(updated);
-        safeLocalStorage.setItem('glucose_records', JSON.stringify(updated));
-        setEditingId(null);
-        setEditData({ glucose: '', food: '', amount: '', insulin: '' });
-      }, [records, editData, calculateCarbs]);
-
-      // 수정 취소
-      const cancelEdit = useCallback(() => {
-        setEditingId(null);
-        setEditData({ glucose: '', food: '', amount: '', insulin: '' });
-      }, []);
-
-      // 로딩 중일 때
-      if (!isLoaded) {
-        return (
-          <div className="loading">
-            앱을 로딩 중입니다...
-          </div>
-        );
-      }
-
-      return (
-        <div className="min-h-screen bg-gray-50">
-          <div className="max-w-4xl mx-auto py-8 px-4">
-            <header className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                DiaLife Pro 🍚
-              </h1>
-              <p className="text-gray-600">당뇨 관리를 위한 혈당 기록 앱</p>
-            </header>
-
-            {/* 새 기록 입력 */}
-            <div className="bg-white shadow-lg rounded-xl p-6 mb-8">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">새 기록 추가</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    혈당 (mg/dL) *
-                  </label>
-                  <input 
-                    type="number" 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="혈당 수치를 입력하세요"
-                    value={newRecord.glucose}
-                    onChange={(e) => setNewRecord({ ...newRecord, glucose: e.target.value })} 
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    음식 이름 *
-                  </label>
-                  <input 
-                    type="text" 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="음식 이름을 입력하세요"
-                    value={newRecord.food}
-                    onChange={(e) => setNewRecord({ ...newRecord, food: e.target.value })} 
-                    list="foodList"
-                  />
-                  <datalist id="foodList">
-                    {Object.keys(FOOD_DATABASE).map(food => (
-                      <option key={food} value={food} />
-                    ))}
-                  </datalist>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    섭취량 (g)
-                  </label>
-                  <input 
-                    type="number" 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="섭취량을 입력하세요"
-                    value={newRecord.amount}
-                    onChange={(e) => setNewRecord({ ...newRecord, amount: e.target.value })} 
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    인슐린 용량 (단위)
-                  </label>
-                  <input 
-                    type="number" 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                    placeholder="인슐린 용량을 입력하세요"
-                    value={newRecord.insulin}
-                    onChange={(e) => setNewRecord({ ...newRecord, insulin: e.target.value })} 
-                  />
-                </div>
-              </div>
-              
-              {newRecord.food && FOOD_DATABASE[newRecord.food] && newRecord.amount && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    예상 탄수화물: <strong>{calculateCarbs(newRecord.food, newRecord.amount)}g</strong>
-                  </p>
-                </div>
-              )}
-              
-              <button 
-                onClick={handleSave} 
-                className="w-full bg-blue-500 text-white rounded-lg py-3 px-4 mt-6 hover:bg-blue-600 transition-colors font-medium"
-              >
-                기록 저장하기
-              </button>
-            </div>
-
-            {/* 기록 목록 */}
-            <div className="bg-white shadow-lg rounded-xl p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                기록 목록 ({records.length}개)
-              </h2>
-              
-              {records.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 text-lg">아직 기록이 없습니다.</p>
-                  <p className="text-gray-400 text-sm mt-2">위에서 첫 번째 기록을 추가해보세요!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {records.slice().reverse().map(record => (
-                    <div key={record.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                      {editingId === record.id ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <input 
-                            type="number" 
-                            value={editData.glucose} 
-                            onChange={(e) => setEditData({ ...editData, glucose: e.target.value })} 
-                            className="border border-gray-300 p-2 rounded-lg" 
-                            placeholder="혈당"
-                          />
-                          <input 
-                            type="text" 
-                            value={editData.food} 
-                            onChange={(e) => setEditData({ ...editData, food: e.target.value })} 
-                            className="border border-gray-300 p-2 rounded-lg" 
-                            placeholder="음식"
-                          />
-                          <input 
-                            type="number" 
-                            value={editData.amount} 
-                            onChange={(e) => setEditData({ ...editData, amount: e.target.value })} 
-                            className="border border-gray-300 p-2 rounded-lg" 
-                            placeholder="섭취량"
-                          />
-                          <input 
-                            type="number" 
-                            value={editData.insulin} 
-                            onChange={(e) => setEditData({ ...editData, insulin: e.target.value })} 
-                            className="border border-gray-300 p-2 rounded-lg" 
-                            placeholder="인슐린"
-                          />
-                          <div className="col-span-full flex gap-2">
-                            <button 
-                              onClick={() => confirmEdit(record.id)} 
-                              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
-                            >
-                              저장
-                            </button>
-                            <button 
-                              onClick={cancelEdit} 
-                              className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <p className="text-lg"><strong>혈당:</strong> <span className="text-blue-600">{record.glucose} mg/dL</span></p>
-                                <p><strong>음식:</strong> {record.food} ({record.amount || 0}g)</p>
-                              </div>
-                              <div>
-                                <p><strong>탄수화물:</strong> <span className="text-green-600">{record.carbs || 0}g</span></p>
-                                <p><strong>인슐린:</strong> {record.insulin || 0} 단위</p>
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-500 mt-2">
-                              {new Date(record.timestamp).toLocaleString('ko-KR', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <button 
-                              onClick={() => startEdit(record)} 
-                              className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
-                            >
-                              수정
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(record.id)} 
-                              className="text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    // 에러 경계 처리
-    class ErrorBoundary extends React.Component {
-      constructor(props) {
-        super(props);
-        this.state = { hasError: false, error: null };
-      }
-
-      static getDerivedStateFromError(error) {
-        return { hasError: true, error };
-      }
-
-      componentDidCatch(error, errorInfo) {
-        console.error('React Error:', error, errorInfo);
-      }
-
-      render() {
-        if (this.state.hasError) {
-          return (
-            <div className="max-w-2xl mx-auto py-10 px-4 text-center">
-              <h1 className="text-2xl font-bold text-red-600 mb-4">오류가 발생했습니다</h1>
-              <p className="text-gray-600 mb-4">페이지를 새로고침해 주세요.</p>
-              <button 
-                onClick={() => window.location.reload()} 
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                새로고침
-              </button>
-            </div>
-          );
-        }
-
-        return this.props.children;
+    function clearElement(element) {
+      while (element.firstChild) {
+        element.removeChild(element.firstChild);
       }
     }
 
     // 앱 렌더링
-    try {
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-      );
-    } catch (error) {
-      console.error('앱 초기화 실패:', error);
-      document.getElementById('root').innerHTML = `
-        <div style="text-align: center; padding: 50px;">
-          <h1 style="color: red;">앱 로드에 실패했습니다</h1>
-          <p>페이지를 새로고침해 주세요.</p>
-          <button onclick="window.location.reload()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px;">
-            새로고침
-          </button>
-        </div>
+    function renderApp() {
+      const appElement = document.getElementById('app');
+      clearElement(appElement);
+
+      if (appState.isLoading) {
+        appElement.appendChild(createElement('div', 'loading', '앱을 로딩 중입니다...'));
+        return;
+      }
+
+      // 새 기록 폼
+      const formCard = createElement('div', 'card');
+      formCard.innerHTML = `
+        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">새 기록 추가</h2>
+        <form id="recordForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="glucose">혈당 (mg/dL) *</label>
+              <input type="number" id="glucose" name="glucose" placeholder="혈당 수치를 입력하세요" required>
+            </div>
+            <div class="form-group">
+              <label for="food">음식 이름 *</label>
+              <input type="text" id="food" name="food" placeholder="음식 이름을 입력하세요" list="foodList" required>
+              <datalist id="foodList">
+                ${Object.keys(FOOD_DATABASE).map(food => `<option value="${food}">`).join('')}
+              </datalist>
+            </div>
+            <div class="form-group">
+              <label for="amount">섭취량 (g)</label>
+              <input type="number" id="amount" name="amount" placeholder="섭취량을 입력하세요">
+            </div>
+            <div class="form-group">
+              <label for="insulin">인슐린 용량 (단위)</label>
+              <input type="number" id="insulin" name="insulin" placeholder="인슐린 용량을 입력하세요">
+            </div>
+          </div>
+          <div id="carbPreview"></div>
+          <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem;">기록 저장하기</button>
+        </form>
       `;
+
+      // 기록 목록
+      const recordsCard = createElement('div', 'card');
+      recordsCard.innerHTML = `
+        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">
+          기록 목록 (${appState.records.length}개)
+        </h2>
+        <div id="recordsList"></div>
+      `;
+
+      appElement.appendChild(formCard);
+      appElement.appendChild(recordsCard);
+
+      // 이벤트 리스너 등록
+      setupEventListeners();
+      renderRecords();
+      updateCarbPreview();
+    }
+
+    function renderRecords() {
+      const recordsList = document.getElementById('recordsList');
+      clearElement(recordsList);
+
+      if (appState.records.length === 0) {
+        recordsList.appendChild(createElement('div', 'empty-state', `
+          <h3>아직 기록이 없습니다</h3>
+          <p>위에서 첫 번째 기록을 추가해보세요!</p>
+        `));
+        return;
+      }
+
+      // 최신 순으로 정렬
+      const sortedRecords = [...appState.records].reverse();
+      
+      sortedRecords.forEach(record => {
+        const recordElement = createElement('div', 'record-item');
+        
+        if (appState.editingId === record.id) {
+          recordElement.innerHTML = `
+            <form id="editForm-${record.id}" class="edit-form">
+              <input type="number" name="glucose" value="${record.glucose || ''}" placeholder="혈당" required>
+              <input type="text" name="food" value="${record.food || ''}" placeholder="음식" required>
+              <input type="number" name="amount" value="${record.amount || ''}" placeholder="섭취량">
+              <input type="number" name="insulin" value="${record.insulin || ''}" placeholder="인슐린">
+              <div class="edit-actions">
+                <button type="submit" class="btn btn-success btn-small">저장</button>
+                <button type="button" class="btn btn-secondary btn-small" onclick="cancelEdit()">취소</button>
+              </div>
+            </form>
+          `;
+        } else {
+          recordElement.innerHTML = `
+            <div class="record-content">
+              <div class="record-info">
+                <div class="record-grid">
+                  <div>
+                    <p><strong>혈당:</strong> <span style="color: #3b82f6;">${record.glucose || 0} mg/dL</span></p>
+                    <p><strong>음식:</strong> ${record.food || ''} (${record.amount || 0}g)</p>
+                  </div>
+                  <div>
+                    <p><strong>탄수화물:</strong> <span style="color: #10b981;">${record.carbs || 0}g</span></p>
+                    <p><strong>인슐린:</strong> ${record.insulin || 0} 단위</p>
+                  </div>
+                </div>
+                <div class="timestamp">${formatDate(record.timestamp)}</div>
+              </div>
+              <div class="record-actions">
+                <button class="btn btn-primary btn-small" onclick="editRecord(${record.id})">수정</button>
+                <button class="btn btn-danger btn-small" onclick="deleteRecord(${record.id})">삭제</button>
+              </div>
+            </div>
+          `;
+        }
+        
+        recordsList.appendChild(recordElement);
+      });
+    }
+
+    function updateCarbPreview() {
+      const foodInput = document.getElementById('food');
+      const amountInput = document.getElementById('amount');
+      const carbPreview = document.getElementById('carbPreview');
+      
+      if (!foodInput || !amountInput || !carbPreview) return;
+      
+      const food = foodInput.value;
+      const amount = amountInput.value;
+      
+      if (food && FOOD_DATABASE[food] && amount) {
+        const carbs = calculateCarbs(food, amount);
+        carbPreview.innerHTML = `
+          <div class="carb-preview">
+            예상 탄수화물: <strong>${carbs}g</strong>
+          </div>
+        `;
+      } else {
+        carbPreview.innerHTML = '';
+      }
+    }
+
+    function setupEventListeners() {
+      // 폼 제출
+      const recordForm = document.getElementById('recordForm');
+      if (recordForm) {
+        recordForm.addEventListener('submit', handleFormSubmit);
+      }
+
+      // 탄수화물 미리보기 업데이트
+      const foodInput = document.getElementById('food');
+      const amountInput = document.getElementById('amount');
+      
+      if (foodInput) {
+        foodInput.addEventListener('input', updateCarbPreview);
+      }
+      if (amountInput) {
+        amountInput.addEventListener('input', updateCarbPreview);
+      }
+    }
+
+    function handleFormSubmit(event) {
+      event.preventDefault();
+      
+      const formData = new FormData(event.target);
+      const glucose = formData.get('glucose');
+      const food = formData.get('food');
+      const amount = formData.get('amount') || 0;
+      const insulin = formData.get('insulin') || 0;
+      
+      if (!glucose || !food) {
+        alert('혈당과 음식 이름은 필수입니다.');
+        return;
+      }
+
+      const record = {
+        id: generateId(),
+        glucose: glucose,
+        food: food,
+        amount: amount,
+        insulin: insulin,
+        carbs: calculateCarbs(food, amount),
+        timestamp: new Date().toISOString()
+      };
+
+      appState.records.push(record);
+      storage.set('glucose_records', appState.records);
+      
+      // 폼 초기화
+      event.target.reset();
+      updateCarbPreview();
+      renderRecords();
+    }
+
+    // 전역 함수들 (인라인 이벤트 핸들러용)
+    window.editRecord = function(id) {
+      appState.editingId = id;
+      renderRecords();
+      
+      // 수정 폼 이벤트 리스너 등록
+      const editForm = document.getElementById(`editForm-${id}`);
+      if (editForm) {
+        editForm.addEventListener('submit', function(event) {
+          event.preventDefault();
+          
+          const formData = new FormData(event.target);
+          const glucose = formData.get('glucose');
+          const food = formData.get('food');
+          const amount = formData.get('amount') || 0;
+          const insulin = formData.get('insulin') || 0;
+          
+          if (!glucose || !food) {
+            alert('혈당과 음식 이름은 필수입니다.');
+            return;
+          }
+
+          appState.records = appState.records.map(record => 
+            record.id === id ? {
+              ...record,
+              glucose: glucose,
+              food: food,
+              amount: amount,
+              insulin: insulin,
+              carbs: calculateCarbs(food, amount)
+            } : record
+          );
+          
+          storage.set('glucose_records', appState.records);
+          appState.editingId = null;
+          renderRecords();
+        });
+      }
+    };
+
+    window.cancelEdit = function() {
+      appState.editingId = null;
+      renderRecords();
+    };
+
+    window.deleteRecord = function(id) {
+      if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+      
+      appState.records = appState.records.filter(record => record.id !== id);
+      storage.set('glucose_records', appState.records);
+      renderRecords();
+    };
+
+    // 앱 초기화
+    function initApp() {
+      try {
+        // 데이터 로드
+        const savedRecords = storage.get('glucose_records');
+        if (savedRecords && Array.isArray(savedRecords)) {
+          appState.records = savedRecords;
+        }
+        
+        appState.isLoading = false;
+        renderApp();
+      } catch (error) {
+        console.error('앱 초기화 실패:', error);
+        document.getElementById('app').innerHTML = `
+          <div class="error">
+            <h3>앱 로드에 실패했습니다</h3>
+            <p>페이지를 새로고침해 주세요.</p>
+            <button onclick="window.location.reload()" class="btn btn-primary">새로고침</button>
+          </div>
+        `;
+      }
+    }
+
+    // DOM 로드 완료 후 앱 시작
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
     }
   </script>
 </body>
