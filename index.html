@@ -675,11 +675,12 @@
         let personalICR = baseICR;
         let personalISF = baseISF;
         
-        if (personalData && personalData.records.length > 10) {
+        if (personalData && personalData.records && personalData.records.length > 10) {
           const successfulResults = personalData.records.filter(record => {
             return record.postMealGlucose && 
                    record.postMealGlucose >= 80 && 
-                   record.postMealGlucose <= 180;
+                   record.postMealGlucose <= 180 &&
+                   record.carbs > 0 && record.insulin > 0;
           });
           
           if (successfulResults.length > 5) {
@@ -1312,6 +1313,7 @@
     let aiEngine = new PersonalizedAIEngine();
     let exerciseTimer = new ExerciseTimer();
     let currentTab = 'dashboard';
+    let calculationResult = null;
 
     // 유틸리티 함수들
     function calculateCarbs(food, amount) {
@@ -1480,6 +1482,80 @@
       `;
     }
 
+    // 인증 관련 함수들
+    function showRegisterForm() {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('registerForm').classList.remove('hidden');
+    }
+
+    function showLoginForm() {
+      document.getElementById('registerForm').classList.add('hidden');
+      document.getElementById('loginForm').classList.remove('hidden');
+    }
+
+    function handleLogin() {
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!username || !password) {
+        alert('사용자명과 비밀번호를 입력하세요.');
+        return;
+      }
+      
+      const user = userManager.login(username, password);
+      
+      if (user) {
+        renderMainApp();
+      } else {
+        alert('로그인 실패. 사용자명과 비밀번호를 확인하세요.');
+      }
+    }
+
+    function handleRegister() {
+      const username = document.getElementById('regUsername').value;
+      const password = document.getElementById('regPassword').value;
+      const name = document.getElementById('regName').value;
+      const age = document.getElementById('regAge').value;
+      const weight = document.getElementById('regWeight').value;
+      const height = document.getElementById('regHeight').value;
+      const diagnosisYear = document.getElementById('regDiagnosis').value;
+      const emergencyContact = document.getElementById('emergencyContact').value;
+      
+      if (!username || !password || !name) {
+        alert('필수 정보를 모두 입력하세요.');
+        return;
+      }
+      
+      // 중복 사용자명 확인
+      const existingUser = Object.values(userManager.users).find(u => u.username === username);
+      if (existingUser) {
+        alert('이미 존재하는 사용자명입니다.');
+        return;
+      }
+      
+      const userData = {
+        username,
+        password,
+        name,
+        age: age ? parseInt(age) : null,
+        weight: weight ? parseFloat(weight) : null,
+        height: height ? parseInt(height) : null,
+        diagnosisYear: diagnosisYear ? parseInt(diagnosisYear) : null,
+        emergencyContact: emergencyContact || null
+      };
+      
+      const user = userManager.register(userData);
+      userManager.currentUser = user;
+      
+      alert('회원가입이 완료되었습니다!');
+      renderMainApp();
+    }
+
+    function logout() {
+      userManager.currentUser = null;
+      renderAuthScreen();
+    }
+
     // 메인 앱 렌더링
     function renderMainApp() {
       const user = userManager.getCurrentUser();
@@ -1646,6 +1722,11 @@
       }
 
       return insights.slice(0, 3);
+    }
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      renderMainApp();
     }
 
     // 탭 컨텐츠 렌더링
@@ -1819,121 +1900,1292 @@
       `;
     }
 
-    function renderExercise(container, user) {
-      const exerciseData = user.personalizedData.exerciseReactions || {};
+    function renderCalculator(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>🧮 AI 개인화 인슐린 계산기</h2>
+          <p style="color: #6b7280; margin-bottom: 1.5rem;">
+            개인 데이터를 학습하여 맞춤형 인슐린 용량을 계산합니다. 
+            <strong>모든 계산 결과는 의료진과 상의 후 사용하세요.</strong>
+          </p>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="calcMealTiming">식사 시점</label>
+              <select id="calcMealTiming">
+                <option value="before">식전</option>
+                <option value="after">식후</option>
+              </select>
+            </div>
+          </div>
+          
+          <div id="calcPreview"></div>
+          
+          <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button onclick="calculateInsulin()" class="btn btn-ai btn-full">
+              🤖 AI 인슐린 계산
+            </button>
+            <button onclick="saveCalculation()" class="btn btn-success">
+              💾 기록으로 저장
+            </button>
+          </div>
+          
+          <div id="calcResults"></div>
+        </div>
+      `;
+
+      setupCalculatorListeners();
+    }
+
+    function setupCalculatorListeners() {
+      const foodInput = document.getElementById('calcFood');
+      const amountInput = document.getElementById('calcAmount');
       
+      if (foodInput) {
+        foodInput.addEventListener('input', (e) => {
+          const query = e.target.value;
+          showCalculatorFoodSuggestions(query);
+          updateCalculatorPreview();
+        });
+        
+        foodInput.addEventListener('blur', () => {
+          setTimeout(() => hideCalculatorFoodSuggestions(), 200);
+        });
+      }
+      
+      if (amountInput) {
+        amountInput.addEventListener('input', updateCalculatorPreview);
+      }
+    }
+
+    function showCalculatorFoodSuggestions(query) {
+      const suggestions = searchFood(query);
+      const container = document.getElementById('calcFoodSuggestions');
+      
+      if (!container || suggestions.length === 0) {
+        hideCalculatorFoodSuggestions();
+        return;
+      }
+      
+      container.innerHTML = suggestions.map(item => `
+        <div class="food-suggestion" onclick="selectCalculatorFood('${item.name}')">
+          <div>
+            <strong>${item.name}</strong>
+            <br>
+            <small>${item.data.category} • 탄수화물 ${item.data.carbs}g/100g • GI ${item.data.glycemicIndex}</small>
+          </div>
+          <div style="text-align: right; font-size: 0.875rem; color: #6b7280;">
+            ${item.data.carbs}g
+          </div>
+        </div>
+      `).join('');
+      
+      container.style.display = 'block';
+    }
+
+    function hideCalculatorFoodSuggestions() {
+      const container = document.getElementById('calcFoodSuggestions');
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
+
+    function selectCalculatorFood(foodName) {
+      document.getElementById('calcFood').value = foodName;
+      hideCalculatorFoodSuggestions();
+      updateCalculatorPreview();
+    }
+
+    function updateCalculatorPreview() {
+      const food = document.getElementById('calcFood').value;
+      const amount = document.getElementById('calcAmount').value;
+      const preview = document.getElementById('calcPreview');
+      const user = userManager.getCurrentUser();
+      
+      if (!food || !preview) return;
+      
+      let content = '';
+      
+      if (KOREAN_FOOD_DATABASE[food] && amount) {
+        const foodData = KOREAN_FOOD_DATABASE[food];
+        const carbs = Math.round(foodData.carbs * amount / 100);
+        const protein = Math.round(foodData.protein * amount / 100);
+        const fat = Math.round(foodData.fat * amount / 100);
+        
+        content += `
+          <div class="preview-box">
+            <h4 style="margin-bottom: 0.75rem; color: #1e40af;">🥄 영양 정보 분석</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem; text-align: center;">
+              <div><strong>${carbs}g</strong><br><small>탄수화물</small></div>
+              <div><strong>${protein}g</strong><br><small>단백질</small></div>
+              <div><strong>${fat}g</strong><br><small>지방</small></div>
+              <div><strong>GI ${foodData.glycemicIndex}</strong><br><small>혈당지수</small></div>
+            </div>
+            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-radius: 0.5rem;">
+              <p style="font-size: 0.875rem;"><strong>데이터 출처:</strong> ${foodData.source} 공식 데이터베이스</p>
+            </div>
+          </div>
+        `;
+      }
+      
+      // 개인별 음식 히스토리
+      if (user.personalizedData.foodReactions[food]) {
+        const reaction = user.personalizedData.foodReactions[food];
+        content += `
+          <div class="personal-analysis">
+            <h4 style="margin-bottom: 0.75rem; color: #0c4a6e;">📊 개인 반응 분석</h4>
+            <p style="margin-bottom: 0.5rem;">
+              <strong>${food}</strong>을(를) ${reaction.count}회 섭취한 기록이 있습니다.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; text-align: center;">
+              <div><strong>${reaction.avgGlucose}mg/dL</strong><br><small>평균 혈당</small></div>
+              <div><strong>${reaction.avgCarbs}g</strong><br><small>평균 탄수화물</small></div>
+              <div><strong>${reaction.avgInsulin}단위</strong><br><small>평균 인슐린</small></div>
+              <div><strong style="color: ${reaction.riskLevel === 'high' ? '#ef4444' : reaction.riskLevel === 'medium' ? '#f59e0b' : '#10b981'};">
+                ${reaction.riskLevel === 'high' ? '주의' : reaction.riskLevel === 'medium' ? '보통' : '안전'}
+              </strong><br><small>위험도</small></div>
+            </div>
+          </div>
+        `;
+      }
+      
+      preview.innerHTML = content;
+    }
+
+    function calculateInsulin() {
+      const glucose = parseFloat(document.getElementById('calcGlucose').value);
+      const food = document.getElementById('calcFood').value;
+      const amount = parseFloat(document.getElementById('calcAmount').value);
+      const mealTiming = document.getElementById('calcMealTiming').value;
+      
+      if (!glucose || !food || !amount) {
+        alert('모든 필수 항목을 입력하세요.');
+        return;
+      }
+      
+      if (!KOREAN_FOOD_DATABASE[food]) {
+        alert('선택한 음식이 데이터베이스에 없습니다.');
+        return;
+      }
+      
+      const carbs = Math.round(KOREAN_FOOD_DATABASE[food].carbs * amount / 100);
+      const user = userManager.getCurrentUser();
+      
+      // AI 엔진을 사용한 개인화 계산
+      const result = aiEngine.calculatePersonalizedInsulin(glucose, carbs, user.personalizedData);
+      
+      calculationResult = {
+        glucose,
+        food,
+        amount,
+        carbs,
+        mealTiming,
+        ...result,
+        timestamp: new Date().toISOString()
+      };
+      
+      // 결과 표시
+      const resultsContainer = document.getElementById('calcResults');
+      resultsContainer.innerHTML = `
+        <div class="ai-recommendations">
+          <h3 style="margin-bottom: 1rem; color: #7c3aed;">🤖 AI 개인화 인슐린 계산 결과</h3>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.5); border-radius: 0.75rem;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;">${result.carbInsulin}</div>
+              <div style="font-size: 0.875rem; color: #6b7280;">탄수화물 인슐린</div>
+            </div>
+            
+            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.5); border-radius: 0.75rem;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;">${result.correctionInsulin}</div>
+              <div style="font-size: 0.875rem; color: #6b7280;">교정 인슐린</div>
+            </div>
+            
+            <div style="text-align: center; padding: 1rem; background: rgba(139, 92, 246, 0.2); border-radius: 0.75rem; border: 2px solid #8b5cf6;">
+              <div style="font-size: 2rem; font-weight: bold; color: #7c3aed;">${result.total}</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #7c3aed;">총 인슐린 단위</div>
+            </div>
+            
+            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.5); border-radius: 0.75rem;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${result.confidence}%</div>
+              <div style="font-size: 0.875rem; color: #6b7280;">신뢰도</div>
+            </div>
+          </div>
+          
+          <div style="padding: 1rem; background: rgba(255, 255, 255, 0.7); border-radius: 0.75rem; margin-bottom: 1rem;">
+            <h4 style="margin-bottom: 0.5rem; color: #1f2937;">개인화 정보</h4>
+            <p style="font-size: 0.875rem; color: #6b7280;">
+              개인 ICR: ${result.personalICR}g/단위 • 개인 ISF: ${result.personalISF}mg/dL/단위<br>
+              탄수화물: ${carbs}g • 현재 혈당: ${glucose}mg/dL
+            </p>
+          </div>
+          
+          <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 0.75rem;">
+            <p style="font-size: 0.875rem; color: #991b1b; font-weight: 500;">
+              ⚠️ 주의사항: 이 계산 결과는 참고용이며, 실제 인슐린 투여 전 반드시 담당 의료진과 상담하세요. 
+              개인의 상황에 따라 용량 조정이 필요할 수 있습니다.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveCalculation() {
+      if (!calculationResult) {
+        alert('먼저 인슐린을 계산하세요.');
+        return;
+      }
+      
+      const record = {
+        id: Date.now(),
+        timestamp: calculationResult.timestamp,
+        glucose: calculationResult.glucose,
+        food: calculationResult.food,
+        amount: calculationResult.amount,
+        carbs: calculationResult.carbs,
+        insulin: calculationResult.total,
+        mealTiming: calculationResult.mealTiming,
+        calculatedBy: 'AI',
+        confidence: calculationResult.confidence
+      };
+      
+      userManager.addRecord(record);
+      alert('기록이 저장되었습니다!');
+      
+      // 입력 필드 초기화
+      document.getElementById('calcGlucose').value = '';
+      document.getElementById('calcFood').value = '';
+      document.getElementById('calcAmount').value = '';
+      document.getElementById('calcPreview').innerHTML = '';
+      document.getElementById('calcResults').innerHTML = '';
+      calculationResult = null;
+    }
+
+    function renderRecordForm(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>➕ 혈당 기록 추가</h2>
+          <p style="color: #6b7280; margin-bottom: 1.5rem;">
+            일상의 혈당 데이터를 기록하여 개인화된 분석을 받아보세요.
+          </p>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="recordGlucose">혈당 (mg/dL) *</label>
+              <input type="number" id="recordGlucose" placeholder="혈당을 입력하세요" min="30" max="600" required>
+            </div>
+            
+            <div class="form-group food-search">
+              <label for="recordFood">음식 이름</label>
+              <input type="text" id="recordFood" placeholder="음식을 검색하세요" autocomplete="off">
+              <div id="recordFoodSuggestions" class="food-suggestions"></div>
+            </div>
+            
+            <div class="form-group">
+              <label for="recordAmount">섭취량 (g)</label>
+              <input type="number" id="recordAmount" placeholder="그램 단위" min="0" step="0.1">
+            </div>
+            
+            <div class="form-group">
+              <label for="recordCarbs">탄수화물 (g)</label>
+              <input type="number" id="recordCarbs" placeholder="직접 입력 또는 자동 계산" min="0" step="0.1">
+            </div>
+            
+            <div class="form-group">
+              <label for="recordInsulin">인슐린 (단위)</label>
+              <input type="number" id="recordInsulin" placeholder="투여한 인슐린 단위" min="0" step="0.1">
+            </div>
+            
+            <div class="form-group">
+              <label for="recordTiming">측정 시점</label>
+              <select id="recordTiming">
+                <option value="fasting">공복</option>
+                <option value="before_meal">식전</option>
+                <option value="after_meal_1h">식후 1시간</option>
+                <option value="after_meal_2h">식후 2시간</option>
+                <option value="before_sleep">취침전</option>
+                <option value="exercise">운동 전후</option>
+                <option value="other">기타</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="recordMemo">메모</label>
+            <textarea id="recordMemo" placeholder="추가 메모 (선택사항)" rows="3"></textarea>
+          </div>
+          
+          <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button onclick="saveRecord()" class="btn btn-success btn-full">
+              💾 기록 저장
+            </button>
+            <button onclick="clearRecordForm()" class="btn btn-primary">
+              🗑️ 초기화
+            </button>
+          </div>
+        </div>
+      `;
+
+      setupRecordListeners();
+    }
+
+    function setupRecordListeners() {
+      const foodInput = document.getElementById('recordFood');
+      const amountInput = document.getElementById('recordAmount');
+      const carbsInput = document.getElementById('recordCarbs');
+      
+      if (foodInput) {
+        foodInput.addEventListener('input', (e) => {
+          const query = e.target.value;
+          showRecordFoodSuggestions(query);
+          updateRecordCarbs();
+        });
+        
+        foodInput.addEventListener('blur', () => {
+          setTimeout(() => hideRecordFoodSuggestions(), 200);
+        });
+      }
+      
+      if (amountInput) {
+        amountInput.addEventListener('input', updateRecordCarbs);
+      }
+    }
+
+    function showRecordFoodSuggestions(query) {
+      const suggestions = searchFood(query);
+      const container = document.getElementById('recordFoodSuggestions');
+      
+      if (!container || suggestions.length === 0) {
+        hideRecordFoodSuggestions();
+        return;
+      }
+      
+      container.innerHTML = suggestions.map(item => `
+        <div class="food-suggestion" onclick="selectRecordFood('${item.name}')">
+          <div>
+            <strong>${item.name}</strong>
+            <br>
+            <small>${item.data.category} • 탄수화물 ${item.data.carbs}g/100g</small>
+          </div>
+          <div style="text-align: right; font-size: 0.875rem; color: #6b7280;">
+            ${item.data.carbs}g
+          </div>
+        </div>
+      `).join('');
+      
+      container.style.display = 'block';
+    }
+
+    function hideRecordFoodSuggestions() {
+      const container = document.getElementById('recordFoodSuggestions');
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
+
+    function selectRecordFood(foodName) {
+      document.getElementById('recordFood').value = foodName;
+      hideRecordFoodSuggestions();
+      updateRecordCarbs();
+    }
+
+    function updateRecordCarbs() {
+      const food = document.getElementById('recordFood').value;
+      const amount = document.getElementById('recordAmount').value;
+      const carbsInput = document.getElementById('recordCarbs');
+      
+      if (food && amount && KOREAN_FOOD_DATABASE[food] && carbsInput) {
+        const carbs = calculateCarbs(food, amount);
+        if (carbs > 0) {
+          carbsInput.value = carbs;
+        }
+      }
+    }
+
+    function saveRecord() {
+      const glucose = document.getElementById('recordGlucose').value;
+      const food = document.getElementById('recordFood').value;
+      const amount = document.getElementById('recordAmount').value;
+      const carbs = document.getElementById('recordCarbs').value;
+      const insulin = document.getElementById('recordInsulin').value;
+      const timing = document.getElementById('recordTiming').value;
+      const memo = document.getElementById('recordMemo').value;
+      
+      if (!glucose) {
+        alert('혈당은 필수 입력 항목입니다.');
+        return;
+      }
+      
+      const record = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        glucose: parseFloat(glucose),
+        food: food || null,
+        amount: amount ? parseFloat(amount) : null,
+        carbs: carbs ? parseFloat(carbs) : null,
+        insulin: insulin ? parseFloat(insulin) : null,
+        timing: timing,
+        memo: memo || null
+      };
+      
+      userManager.addRecord(record);
+      alert('기록이 저장되었습니다!');
+      clearRecordForm();
+    }
+
+    function clearRecordForm() {
+      document.getElementById('recordGlucose').value = '';
+      document.getElementById('recordFood').value = '';
+      document.getElementById('recordAmount').value = '';
+      document.getElementById('recordCarbs').value = '';
+      document.getElementById('recordInsulin').value = '';
+      document.getElementById('recordTiming').value = 'fasting';
+      document.getElementById('recordMemo').value = '';
+    }
+
+    function renderExercise(container, user) {
       container.innerHTML = `
         <div class="main-grid">
           <div class="card">
-            <h2>🏃‍♂️ 운동 기록 추가</h2>
-            <form id="exerciseForm">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="exerciseType">운동 종목 *</label>
-                  <input type="text" id="exerciseType" required placeholder="운동을 검색하세요" list="exerciseList" autocomplete="off">
-                  <datalist id="exerciseList">
-                    ${Object.keys(EXERCISE_DATABASE).map(exercise => `<option value="${exercise}">`).join('')}
-                  </datalist>
-                </div>
-                
-                <div class="form-group">
-                  <label for="mealTiming">식사 상태</label>
-                  <select id="mealTiming">
-                    <option value="fasting">공복 (식사 후 4시간+)</option>
-                    <option value="post_meal_1h">식후 1시간 이내</option>
-                    <option value="post_meal_2h">식후 1-2시간</option>
-                    <option value="post_meal_3h">식후 2-3시간</option>
-                    <option value="snack">간식 후</option>
-                  </select>
-                </div>
-                
-                <div class="form-group">
-                  <label for="preExerciseGlucose">운동 전 혈당 (mg/dL) *</label>
-                  <input type="number" id="preExerciseGlucose" required min="30" max="600" placeholder="운동 전 혈당">
-                </div>
-                
-                <div class="form-group">
-                  <label for="exerciseIntensity">운동 강도</label>
-                  <select id="exerciseIntensity">
-                    <option value="low">낮음 (가벼운 산책, 요가)</option>
-                    <option value="medium">보통 (빠른 걷기, 조깅)</option>
-                    <option value="high">높음 (달리기, 웨이트)</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div id="exercisePreview"></div>
-              
-              <div style="margin: 1.5rem 0;">
-                <h3 style="margin-bottom: 1rem;">⏱️ 운동 시간 기록</h3>
-                <div class="timer-display" id="timerDisplay">0분</div>
-                <div class="timer-controls">
-                  <button type="button" onclick="startExercise()" class="btn btn-exercise" id="startBtn">
-                    ▶️ 운동 시작
-                  </button>
-                  <button type="button" onclick="stopExercise()" class="btn btn-danger" id="stopBtn" disabled>
-                    ⏸️ 운동 종료
-                  </button>
-                </div>
-              </div>
-              
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="manualDuration">또는 수동 입력 (분)</label>
-                  <input type="number" id="manualDuration" min="1" max="300" placeholder="운동 시간(분)">
-                </div>
-                
-                <div class="form-group">
-                  <label for="postExerciseGlucose">운동 후 혈당 (mg/dL)</label>
-                  <input type="number" id="postExerciseGlucose" min="30" max="600" placeholder="운동 후 혈당">
-                </div>
+            <h2>🏃‍♂️ 운동 기록</h2>
+            
+            <div class="form-group">
+              <label for="exerciseType">운동 종목</label>
+              <input type="text" id="exerciseType" placeholder="운동을 검색하세요" autocomplete="off">
+              <div id="exerciseSuggestions" class="food-suggestions"></div>
+            </div>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="preExerciseGlucose">운동 전 혈당 (mg/dL)</label>
+                <input type="number" id="preExerciseGlucose" placeholder="운동 전 혈당" min="30" max="600">
               </div>
               
               <div class="form-group">
-                <label for="exerciseNotes">메모 (선택)</label>
-                <textarea id="exerciseNotes" placeholder="운동 중 특이사항, 컨디션 등" rows="3"></textarea>
+                <label for="postExerciseGlucose">운동 후 혈당 (mg/dL)</label>
+                <input type="number" id="postExerciseGlucose" placeholder="운동 후 혈당" min="30" max="600">
+              </div>
+            </div>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="exerciseDuration">운동 시간 (분)</label>
+                <input type="number" id="exerciseDuration" placeholder="분 단위" min="1" max="480">
               </div>
               
-              <button type="submit" class="btn btn-exercise btn-full">
-                💾 운동 기록 저장
+              <div class="form-group">
+                <label for="exerciseIntensity">운동 강도</label>
+                <select id="exerciseIntensity">
+                  <option value="low">낮음</option>
+                  <option value="medium">보통</option>
+                  <option value="high">높음</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="timer-controls">
+              <button onclick="startExerciseTimer()" class="btn btn-exercise">
+                ⏱️ 타이머 시작
               </button>
-            </form>
+              <button onclick="stopExerciseTimer()" class="btn btn-danger">
+                ⏹️ 타이머 종료
+              </button>
+            </div>
+            
+            <div id="timerDisplay" class="timer-display">0분</div>
+            
+            <button onclick="saveExerciseRecord()" class="btn btn-success btn-full">
+              💾 운동 기록 저장
+            </button>
           </div>
           
           <div class="card">
-            <h2>📊 운동 효과 분석</h2>
-            ${Object.keys(exerciseData).length === 0 ? 
-              '<p style="color: #6b7280;">운동 기록이 쌓이면 개인별 운동 효과를 분석해드립니다.</p>' :
-              `<div>
-                ${Object.entries(exerciseData).map(([exercise, data]) => `
-                  <div class="exercise-item">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                      <strong>${exercise}</strong>
-                      <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <div class="trend-indicator ${data.safetyLevel === 'safe' ? 'trend-good' : data.safetyLevel === 'high_risk' ? 'trend-danger' : 'trend-warning'}"></div>
-                        <span style="font-size: 0.875rem; color: #6b7280;">${data.safetyLevel === 'safe' ? '안전' : data.safetyLevel === 'high_risk' ? '위험' : '보통'}</span>
-                      </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 0.5rem; font-size: 0.875rem; color: #6b7280;">
-                      <div><strong>${data.count}회</strong><br>기록</div>
-                      <div><strong>${data.avgDuration}분</strong><br>평균 시간</div>
-                      <div><strong>${data.avgGlucoseChange > 0 ? '+' : ''}${data.avgGlucoseChange}</strong><br>혈당 변화</div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>`
-            }
+            <h2>📊 운동 효과 예측</h2>
+            <div id="exercisePreview">
+              <p style="color: #6b7280; text-align: center; padding: 2rem;">
+                운동 종목을 선택하면 예상 효과를 보여드립니다.
+              </p>
+            </div>
           </div>
         </div>
         
         <div class="card full-width">
-          <h2>💡 운동 전 안전 체크</h2>
-          <div id="exerciseSafetyCheck"></div>
+          <h2>🏆 운동별 개인 분석</h2>
+          <div id="exerciseAnalysis">
+            ${Object.keys(user.personalizedData.exerciseReactions || {}).length === 0 ? 
+              '<p style="color: #6b7280; text-align: center; padding: 2rem;">충분한 운동 데이터가 없습니다. 더 많은 운동을 기록해보세요!</p>' :
+              Object.entries(user.personalizedData.exerciseReactions).map(([exercise, data]) => `
+                <div class="exercise-item">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div>
+                      <strong>${exercise}</strong>
+                      <div style="font-size: 0.875rem; color: #6b7280;">
+                        ${data.count}회 기록 • 평균 ${data.avgDuration}분
+                      </div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-size: 1.25rem; font-weight: 600; color: ${data.avgGlucoseChange < 0 ? '#10b981' : '#f59e0b'};">
+                        ${data.avgGlucoseChange > 0 ? '+' : ''}${data.avgGlucoseChange} mg/dL
+                      </div>
+                      <div style="font-size: 0.75rem; color: #6b7280;">평균 혈당 변화</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: #6b7280;">
+                    <span>안전도: <strong style="color: ${data.safetyLevel === 'safe' ? '#10b981' : data.safetyLevel === 'moderate' ? '#f59e0b' : '#ef4444'};">
+                      ${data.safetyLevel === 'safe' ? '안전' : data.safetyLevel === 'moderate' ? '보통' : '주의'}
+                    </strong></span>
+                    <span>평균 칼로리: ${data.avgCaloriesBurned || 0}kcal</span>
+                  </div>
+                </div>
+              `).join('')
+            }
+          </div>
         </div>
       `;
 
-      // 운동 폼 이벤트 리스너 설정
-      setupExerciseFormListeners();
+      setupExerciseListeners();
     }
 
-    function
+    function setupExerciseListeners() {
+      const exerciseInput = document.getElementById('exerciseType');
+      
+      if (exerciseInput) {
+        exerciseInput.addEventListener('input', (e) => {
+          const query = e.target.value;
+          showExerciseSuggestions(query);
+          updateExercisePreview();
+        });
+        
+        exerciseInput.addEventListener('blur', () => {
+          setTimeout(() => hideExerciseSuggestions(), 200);
+        });
+      }
+    }
+
+    function showExerciseSuggestions(query) {
+      const suggestions = searchExercise(query);
+      const container = document.getElementById('exerciseSuggestions');
+      
+      if (!container || suggestions.length === 0) {
+        hideExerciseSuggestions();
+        return;
+      }
+      
+      container.innerHTML = suggestions.map(item => `
+        <div class="food-suggestion" onclick="selectExercise('${item.name}')">
+          <div>
+            <strong>${item.name}</strong>
+            <br>
+            <small>${item.data.category} • ${item.data.intensity} 강도</small>
+          </div>
+          <div style="text-align: right; font-size: 0.875rem; color: #6b7280;">
+            ${item.data.caloriesPerMinute}kcal/분
+          </div>
+        </div>
+      `).join('');
+      
+      container.style.display = 'block';
+    }
+
+    function hideExerciseSuggestions() {
+      const container = document.getElementById('exerciseSuggestions');
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
+
+    function selectExercise(exerciseName) {
+      document.getElementById('exerciseType').value = exerciseName;
+      hideExerciseSuggestions();
+      updateExercisePreview();
+    }
+
+    function updateExercisePreview() {
+      const exerciseType = document.getElementById('exerciseType').value;
+      const preGlucose = document.getElementById('preExerciseGlucose').value;
+      const duration = document.getElementById('exerciseDuration').value;
+      const preview = document.getElementById('exercisePreview');
+      
+      if (!exerciseType || !EXERCISE_DATABASE[exerciseType]) {
+        preview.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">운동 종목을 선택하면 예상 효과를 보여드립니다.</p>';
+        return;
+      }
+      
+      const exerciseData = EXERCISE_DATABASE[exerciseType];
+      const estimatedCalories = duration ? Math.round(exerciseData.caloriesPerMinute * duration) : 0;
+      const estimatedGlucoseChange = duration ? Math.round(exerciseData.glucoseEffect * duration / 30) : exerciseData.glucoseEffect;
+      
+      let content = `
+        <div class="exercise-preview">
+          <h4 style="margin-bottom: 0.75rem; color: #d97706;">🎯 ${exerciseType} 예상 효과</h4>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; text-align: center; margin-bottom: 1rem;">
+            <div><strong>${exerciseData.intensity}</strong><br><small>강도</small></div>
+            <div><strong>${exerciseData.caloriesPerMinute}kcal/분</strong><br><small>칼로리 소모</small></div>
+            ${duration ? `<div><strong>${estimatedCalories}kcal</strong><br><small>총 예상 칼로리</small></div>` : ''}
+            <div><strong>${estimatedGlucoseChange}mg/dL</strong><br><small>예상 혈당 변화</small></div>
+          </div>
+        </div>
+      `;
+      
+      // 운동 전 혈당이 입력된 경우 안전성 체크
+      if (preGlucose) {
+        const glucose = parseFloat(preGlucose);
+        const recommendations = aiEngine.getExerciseRecommendation(glucose, exerciseType, 'fasting');
+        
+        if (recommendations && recommendations.length > 0) {
+          content += `
+            <div class="exercise-safety">
+              <h4 style="margin-bottom: 0.75rem; color: #dc2626;">⚕️ 운동 안전성 권고</h4>
+              ${recommendations.map(rec => `
+                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.5); border-radius: 0.5rem;">
+                  <div style="font-weight: 500; color: ${rec.type === 'danger' ? '#dc2626' : rec.type === 'warning' ? '#d97706' : '#059669'};">
+                    ${rec.type === 'danger' ? '🚨' : rec.type === 'warning' ? '⚠️' : '💡'} ${rec.priority}
+                  </div>
+                  <div style="font-size: 0.875rem; margin-top: 0.25rem;">${rec.message}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+      
+      preview.innerHTML = content;
+    }
+
+    function startExerciseTimer() {
+      exerciseTimer.start();
+      alert('운동 타이머가 시작되었습니다!');
+    }
+
+    function stopExerciseTimer() {
+      exerciseTimer.stop();
+      const duration = exerciseTimer.getDuration();
+      document.getElementById('exerciseDuration').value = duration;
+      alert(`운동이 완료되었습니다! 총 ${duration}분 운동하셨습니다.`);
+      updateExercisePreview();
+    }
+
+    function saveExerciseRecord() {
+      const exerciseType = document.getElementById('exerciseType').value;
+      const preGlucose = document.getElementById('preExerciseGlucose').value;
+      const postGlucose = document.getElementById('postExerciseGlucose').value;
+      const duration = document.getElementById('exerciseDuration').value;
+      const intensity = document.getElementById('exerciseIntensity').value;
+      
+      if (!exerciseType || !duration) {
+        alert('운동 종목과 시간은 필수 입력 항목입니다.');
+        return;
+      }
+      
+      const exerciseData = EXERCISE_DATABASE[exerciseType];
+      const caloriesBurned = exerciseData ? Math.round(exerciseData.caloriesPerMinute * duration) : 0;
+      
+      const record = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        exerciseType: exerciseType,
+        preExerciseGlucose: preGlucose ? parseFloat(preGlucose) : null,
+        postExerciseGlucose: postGlucose ? parseFloat(postGlucose) : null,
+        duration: parseFloat(duration),
+        intensity: intensity,
+        caloriesBurned: caloriesBurned,
+        startTime: exerciseTimer.startTime ? exerciseTimer.startTime.toISOString() : null
+      };
+      
+      userManager.addExerciseRecord(record);
+      alert('운동 기록이 저장되었습니다!');
+      
+      // 폼 초기화
+      document.getElementById('exerciseType').value = '';
+      document.getElementById('preExerciseGlucose').value = '';
+      document.getElementById('postExerciseGlucose').value = '';
+      document.getElementById('exerciseDuration').value = '';
+      document.getElementById('exerciseIntensity').value = 'medium';
+      document.getElementById('exercisePreview').innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">운동 종목을 선택하면 예상 효과를 보여드립니다.</p>';
+      
+      // 타이머 리셋
+      exerciseTimer = new ExerciseTimer();
+      document.getElementById('timerDisplay').textContent = '0분';
+      
+      renderMainApp(); // 업데이트된 데이터 반영
+    }
+
+    function renderAnalysis(container, user) {
+      const data = user.personalizedData;
+      
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>📈 개인화 혈당 분석</h2>
+          
+          <div class="stats-dashboard">
+            <div class="stat-card">
+              <div class="stat-value">${data.avgGlucose || 0}</div>
+              <div class="stat-label">전체 평균 혈당</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${data.timeInRange || 0}%</div>
+              <div class="stat-label">목표 범위 시간 (TIR)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${data.personalICR || 15}</div>
+              <div class="stat-label">개인 ICR</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${data.personalISF || 50}</div>
+              <div class="stat-label">개인 ISF</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="main-grid">
+          <div class="card">
+            <h2>🍽️ 음식별 혈당 반응</h2>
+            ${Object.keys(data.foodReactions).length === 0 ? 
+              '<p style="color: #6b7280; text-align: center; padding: 2rem;">충분한 음식 데이터가 없습니다.</p>' :
+              Object.entries(data.foodReactions).slice(0, 10).map(([food, reaction]) => `
+                <div class="pattern-item">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <strong>${food}</strong>
+                      <div style="font-size: 0.875rem; color: #6b7280;">${reaction.count}회 섭취</div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-size: 1.25rem; font-weight: 600; color: ${getGlucoseColor(reaction.avgGlucose)};">
+                        ${reaction.avgGlucose} mg/dL
+                      </div>
+                      <div style="font-size: 0.75rem; color: #6b7280;">평균 혈당</div>
+                    </div>
+                  </div>
+                </div>
+              `).join('')
+            }
+          </div>
+          
+          <div class="card">
+            <h2>🏃‍♂️ 운동별 혈당 효과</h2>
+            ${Object.keys(data.exerciseReactions || {}).length === 0 ? 
+              '<p style="color: #6b7280; text-align: center; padding: 2rem;">충분한 운동 데이터가 없습니다.</p>' :
+              Object.entries(data.exerciseReactions).slice(0, 10).map(([exercise, reaction]) => `
+                <div class="exercise-item">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <strong>${exercise}</strong>
+                      <div style="font-size: 0.875rem; color: #6b7280;">${reaction.count}회 • ${reaction.avgDuration}분</div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-size: 1.25rem; font-weight: 600; color: ${reaction.avgGlucoseChange < 0 ? '#10b981' : '#f59e0b'};">
+                        ${reaction.avgGlucoseChange > 0 ? '+' : ''}${reaction.avgGlucoseChange} mg/dL
+                      </div>
+                      <div style="font-size: 0.75rem; color: #6b7280;">평균 변화</div>
+                    </div>
+                  </div>
+                </div>
+              `).join('')
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFoodPatterns(container, user) {
+      const foodReactions = user.personalizedData.foodReactions;
+      
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>🍽️ 개인별 음식 반응 패턴</h2>
+          <p style="color: #6b7280; margin-bottom: 1.5rem;">
+            섭취한 음식별 혈당 반응을 분석하여 개인 맞춤 식단 관리를 도와드립니다.
+          </p>
+          
+          ${Object.keys(foodReactions).length === 0 ? 
+            '<div style="text-align: center; padding: 3rem; color: #6b7280;"><h3>아직 충분한 음식 데이터가 없습니다</h3><p>더 많은 음식 기록을 추가하여 개인화된 분석을 받아보세요!</p></div>' :
+            `
+            <div class="main-grid">
+              <div class="card">
+                <h3>🟢 안전한 음식 (권장)</h3>
+                ${Object.entries(foodReactions)
+                  .filter(([food, data]) => data.riskLevel === 'low')
+                  .slice(0, 10)
+                  .map(([food, data]) => `
+                    <div class="pattern-item">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                          <strong>${food}</strong>
+                          <div style="font-size: 0.875rem; color: #6b7280;">
+                            ${data.count}회 섭취 • 평균 ${data.avgCarbs}g 탄수화물
+                          </div>
+                        </div>
+                        <div style="text-align: right;">
+                          <div style="font-size: 1.1rem; font-weight: 600; color: #10b981;">
+                            ${data.avgGlucose} mg/dL
+                          </div>
+                          <div style="font-size: 0.75rem; color: #10b981;">안전</div>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('') || '<p style="color: #6b7280; text-align: center; padding: 1rem;">데이터 없음</p>'}
+              </div>
+              
+              <div class="card">
+                <h3>🟡 주의 음식 (적당히)</h3>
+                ${Object.entries(foodReactions)
+                  .filter(([food, data]) => data.riskLevel === 'medium')
+                  .slice(0, 10)
+                  .map(([food, data]) => `
+                    <div class="pattern-item" style="border-left: 4px solid #f59e0b;">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                          <strong>${food}</strong>
+                          <div style="font-size: 0.875rem; color: #6b7280;">
+                            ${data.count}회 섭취 • 평균 ${data.avgCarbs}g 탄수화물
+                          </div>
+                        </div>
+                        <div style="text-align: right;">
+                          <div style="font-size: 1.1rem; font-weight: 600; color: #f59e0b;">
+                            ${data.avgGlucose} mg/dL
+                          </div>
+                          <div style="font-size: 0.75rem; color: #f59e0b;">주의</div>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('') || '<p style="color: #6b7280; text-align: center; padding: 1rem;">데이터 없음</p>'}
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3>🔴 위험 음식 (제한 권장)</h3>
+              ${Object.entries(foodReactions)
+                .filter(([food, data]) => data.riskLevel === 'high')
+                .slice(0, 10)
+                .map(([food, data]) => `
+                  <div class="pattern-item" style="border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <strong>${food}</strong>
+                        <div style="font-size: 0.875rem; color: #6b7280;">
+                          ${data.count}회 섭취 • 평균 ${data.avgCarbs}g 탄수화물 • 평균 ${data.avgInsulin}단위 인슐린
+                        </div>
+                      </div>
+                      <div style="text-align: right;">
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #ef4444;">
+                          ${data.avgGlucose} mg/dL
+                        </div>
+                        <div style="font-size: 0.75rem; color: #ef4444;">위험</div>
+                      </div>
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #dc2626; font-weight: 500;">
+                      ⚠️ 이 음식은 혈당을 크게 상승시킵니다. 섭취 시 인슐린 용량 조정이나 의료진 상담을 권장합니다.
+                    </div>
+                  </div>
+                `).join('') || '<p style="color: #6b7280; text-align: center; padding: 1rem;">다행히 위험한 음식이 없습니다!</p>'}
+            </div>
+            `
+          }
+        </div>
+      `;
+    }
+
+    function renderEmergency(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>🚨 응급상황 가이드</h2>
+          
+          <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem;">
+            <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ 즉시 119에 연락해야 하는 상황</h3>
+            <ul style="color: #991b1b; line-height: 1.8;">
+              <li>의식을 잃었거나 반응이 없는 경우</li>
+              <li>심한 저혈당으로 경련이나 발작이 있는 경우</li>
+              <li>지속적인 구토로 수분 섭취가 불가능한 경우</li>
+              <li>케톤산증 의심 증상 (구토, 복통, 과도한 갈증)</li>
+              <li>혈당이 500mg/dL 이상인 경우</li>
+            </ul>
+          </div>
+          
+          <div class="main-grid">
+            <div class="card">
+              <h3 style="color: #ef4444;">🩸 저혈당 응급처치</h3>
+              <div style="background: rgba(239, 68, 68, 0.05); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem;">
+                <h4 style="margin-bottom: 0.5rem;">혈당 70mg/dL 미만 시</h4>
+                <ol style="line-height: 1.6;">
+                  <li><strong>즉시 15g 속효성 탄수화물 섭취</strong>
+                    <ul style="margin-top: 0.5rem; color: #6b7280;">
+                      <li>포도당 정제 3-4정</li>
+                      <li>설탕 1큰술 (15g)</li>
+                      <li>꿀 1큰술</li>
+                      <li>오렌지 주스 120ml</li>
+                    </ul>
+                  </li>
+                  <li><strong>15분 후 혈당 재측정</strong></li>
+                  <li><strong>여전히 70mg/dL 미만이면 반복</strong></li>
+                  <li><strong>정상화되면 복합탄수화물 섭취</strong></li>
+                </ol>
+              </div>
+              
+              <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; padding: 1rem; border-radius: 0.75rem;">
+                <p style="font-size: 0.875rem; color: #92400e;">
+                  <strong>의식이 없는 경우:</strong> 절대 음식을 입에 넣지 마세요. 즉시 119에 연락하고 글루카곤 주사를 투여하세요.
+                </p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h3 style="color: #f59e0b;">📈 고혈당 응급처치</h3>
+              <div style="background: rgba(245, 158, 11, 0.05); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem;">
+                <h4 style="margin-bottom: 0.5rem;">혈당 250mg/dL 이상 시</h4>
+                <ol style="line-height: 1.6;">
+                  <li><strong>케톤 검사 실시</strong></li>
+                  <li><strong>충분한 수분 섭취</strong> (물, 무설탕 음료)</li>
+                  <li><strong>의료진에게 연락</strong></li>
+                  <li><strong>인슐린 투여 고려</strong> (의료진 지시하에)</li>
+                  <li><strong>운동 금지</strong> (케톤이 있는 경우)</li>
+                </ol>
+              </div>
+              
+              <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 1rem; border-radius: 0.75rem;">
+                <h4 style="color: #dc2626; margin-bottom: 0.5rem;">케톤산증 증상</h4>
+                <ul style="color: #991b1b; font-size: 0.875rem;">
+                  <li>과도한 갈증과 잦은 소변</li>
+                  <li>구토, 복통</li>
+                  <li>호흡곤란, 과일 냄새 호흡</li>
+                  <li>의식 저하</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card full-width">
+            <h3>📞 응급 연락처</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+              <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #dc2626;">119</div>
+                <div style="color: #991b1b;">응급실</div>
+              </div>
+              
+              <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #1d4ed8;">담당 병원</div>
+                <div style="color: #1e40af; font-size: 0.875rem;">평소 다니는 병원</div>
+              </div>
+              
+              ${user.emergencyContact ? `
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                  <div style="font-size: 1.25rem; font-weight: bold; color: #059669;">${user.emergencyContact}</div>
+                  <div style="color: #047857; font-size: 0.875rem;">등록된 응급 연락처</div>
+                </div>
+              ` : `
+                <div style="background: rgba(156, 163, 175, 0.1); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                  <div style="color: #6b7280;">응급 연락처 미등록</div>
+                  <button onclick="switchTab('profile')" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
+                    설정에서 등록
+                  </button>
+                </div>
+              `}
+            </div>
+          </div>
+          
+          <div style="background: rgba(59, 130, 246, 0.1); border: 2px solid #3b82f6; border-radius: 1rem; padding: 1.5rem; margin-top: 2rem;">
+            <h3 style="color: #1e40af; margin-bottom: 1rem;">💡 응급상황 예방 팁</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+              <div>
+                <h4 style="color: #1d4ed8;">저혈당 예방</h4>
+                <ul style="font-size: 0.875rem; color: #1e40af; line-height: 1.6;">
+                  <li>규칙적인 식사와 간식</li>
+                  <li>운동 전후 혈당 체크</li>
+                  <li>항상 응급 간식 휴대</li>
+                  <li>알코올 섭취 시 주의</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 style="color: #1d4ed8;">고혈당 예방</h4>
+                <ul style="font-size: 0.875rem; color: #1e40af; line-height: 1.6;">
+                  <li>정확한 인슐린 투여</li>
+                  <li>탄수화물 계산 정확히</li>
+                  <li>스트레스 관리</li>
+                  <li>정기적인 혈당 모니터링</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfile(container, user) {
+      container.innerHTML = `
+        <div class="card full-width">
+          <h2>⚙️ 사용자 설정</h2>
+          
+          <div class="main-grid">
+            <div class="card">
+              <h3>👤 기본 정보</h3>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="profileName">이름</label>
+                  <input type="text" id="profileName" value="${user.name || ''}" placeholder="이름">
+                </div>
+                
+                <div class="form-group">
+                  <label for="profileAge">나이</label>
+                  <input type="number" id="profileAge" value="${user.age || ''}" placeholder="나이" min="1" max="120">
+                </div>
+                
+                <div class="form-group">
+                  <label for="profileWeight">체중 (kg)</label>
+                  <input type="number" id="profileWeight" value="${user.weight || ''}" placeholder="체중" step="0.1">
+                </div>
+                
+                <div class="form-group">
+                  <label for="profileHeight">신장 (cm)</label>
+                  <input type="number" id="profileHeight" value="${user.height || ''}" placeholder="신장">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="profileEmergency">응급 연락처</label>
+                <input type="tel" id="profileEmergency" value="${user.emergencyContact || ''}" placeholder="010-0000-0000">
+              </div>
+              
+              <button onclick="updateProfile()" class="btn btn-success btn-full">
+                💾 기본 정보 저장
+              </button>
+            </div>
+            
+            <div class="card">
+              <h3>🎯 목표 설정</h3>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="targetMinGlucose">목표 혈당 최소값 (mg/dL)</label>
+                  <input type="number" id="targetMinGlucose" value="${user.preferences.targetGlucose.min}" min="60" max="150">
+                </div>
+                
+                <div class="form-group">
+                  <label for="targetMaxGlucose">목표 혈당 최대값 (mg/dL)</label>
+                  <input type="number" id="targetMaxGlucose" value="${user.preferences.targetGlucose.max}" min="120" max="250">
+                </div>
+                
+                <div class="form-group">
+                  <label for="targetA1C">목표 HbA1c (%)</label>
+                  <input type="number" id="targetA1C" value="${user.preferences.targetA1C}" step="0.1" min="5.0" max="10.0">
+                </div>
+                
+                <div class="form-group">
+                  <label for="insulinType">인슐린 종류</label>
+                  <select id="insulinType">
+                    <option value="rapid" ${user.preferences.insulinType === 'rapid' ? 'selected' : ''}>초속효성</option>
+                    <option value="short" ${user.preferences.insulinType === 'short' ? 'selected' : ''}>속효성</option>
+                    <option value="intermediate" ${user.preferences.insulinType === 'intermediate' ? 'selected' : ''}>중간형</option>
+                    <option value="long" ${user.preferences.insulinType === 'long' ? 'selected' : ''}>지속형</option>
+                  </select>
+                </div>
+              </div>
+              
+              <button onclick="updatePreferences()" class="btn btn-success btn-full">
+                🎯 목표 설정 저장
+              </button>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3>📊 데이터 관리</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+              <div style="text-align: center; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 0.75rem;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #1d4ed8;">${user.personalizedData.totalRecords}</div>
+                <div style="color: #1e40af;">혈당 기록</div>
+              </div>
+              
+              <div style="text-align: center; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-radius: 0.75rem;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #d97706;">${user.personalizedData.totalExerciseRecords || 0}</div>
+                <div style="color: #92400e;">운동 기록</div>
+              </div>
+              
+              <div style="text-align: center; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.75rem;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #059669;">${Math.round((Date.now() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24))}일</div>
+                <div style="color: #047857;">사용 기간</div>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <button onclick="exportData()" class="btn btn-primary">
+                📤 데이터 내보내기
+              </button>
+              <button onclick="importData()" class="btn btn-success">
+                📥 데이터 가져오기
+              </button>
+            </div>
+            
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 0.75rem; padding: 1rem;">
+              <h4 style="color: #dc2626; margin-bottom: 0.5rem;">⚠️ 위험 구역</h4>
+              <p style="font-size: 0.875rem; color: #991b1b; margin-bottom: 1rem;">
+                아래 작업은 되돌릴 수 없습니다. 신중하게 결정하세요.
+              </p>
+              <button onclick="deleteAllData()" class="btn btn-danger">
+                🗑️ 모든 데이터 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateProfile() {
+      const name = document.getElementById('profileName').value;
+      const age = document.getElementById('profileAge').value;
+      const weight = document.getElementById('profileWeight').value;
+      const height = document.getElementById('profileHeight').value;
+      const emergency = document.getElementById('profileEmergency').value;
+      
+      if (!name) {
+        alert('이름은 필수 입력 항목입니다.');
+        return;
+      }
+      
+      userManager.updateUserData({
+        name: name,
+        age: age ? parseInt(age) : null,
+        weight: weight ? parseFloat(weight) : null,
+        height: height ? parseInt(height) : null,
+        emergencyContact: emergency || null
+      });
+      
+      alert('기본 정보가 저장되었습니다!');
+      renderMainApp();
+    }
+
+    function updatePreferences() {
+      const minGlucose = document.getElementById('targetMinGlucose').value;
+      const maxGlucose = document.getElementById('targetMaxGlucose').value;
+      const targetA1C = document.getElementById('targetA1C').value;
+      const insulinType = document.getElementById('insulinType').value;
+      
+      userManager.updateUserData({
+        preferences: {
+          ...userManager.currentUser.preferences,
+          targetGlucose: {
+            min: parseInt(minGlucose),
+            max: parseInt(maxGlucose)
+          },
+          targetA1C: parseFloat(targetA1C),
+          insulinType: insulinType
+        }
+      });
+      
+      alert('목표 설정이 저장되었습니다!');
+    }
+
+    function exportData() {
+      const user = userManager.getCurrentUser();
+      const data = {
+        userData: user,
+        exportDate: new Date().toISOString(),
+        appVersion: 'DiaLife Pro v1.0'
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dialife_data_${user.name}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      alert('데이터가 성공적으로 내보내졌습니다!');
+    }
+
+    function importData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (data.userData && data.userData.id) {
+              if (confirm('기존 데이터를 덮어쓰시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                userManager.users[data.userData.id] = data.userData;
+                userManager.currentUser = data.userData;
+                userManager.saveUsers();
+                alert('데이터가 성공적으로 가져와졌습니다!');
+                renderMainApp();
+              }
+            } else {
+              alert('올바르지 않은 데이터 형식입니다.');
+            }
+          } catch (error) {
+            alert('파일을 읽는 중 오류가 발생했습니다.');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    function deleteAllData() {
+      if (confirm('정말로 모든 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 혈당 기록, 운동 기록, 개인화 데이터가 영구적으로 삭제됩니다.')) {
+        if (confirm('마지막 확인입니다. 정말로 삭제하시겠습니까?')) {
+          userManager.currentUser.records = [];
+          userManager.currentUser.exerciseRecords = [];
+          userManager.currentUser.personalizedData = {
+            totalRecords: 0,
+            totalExerciseRecords: 0,
+            avgGlucose: 0,
+            timeInRange: 0,
+            avgA1C: 0,
+            personalICR: 15,
+            personalISF: 50,
+            foodReactions: {},
+            exerciseReactions: {},
+            timePatterns: {},
+            exercisePatterns: {},
+            successfulPatterns: [],
+            riskFactors: []
+          };
+          
+          userManager.saveUsers();
+          alert('모든 데이터가 삭제되었습니다.');
+          renderMainApp();
+        }
+      }
+    }
+
+    function deleteRecord(recordId) {
+      if (confirm('이 기록을 삭제하시겠습니까?')) {
+        userManager.deleteRecord(recordId);
+        renderMainApp();
+      }
+    }
+
+    function deleteExerciseRecord(recordId) {
+      if (confirm('이 운동 기록을 삭제하시겠습니까?')) {
+        userManager.deleteExerciseRecord(recordId);
+        renderMainApp();
+      }
+    }
+
+    // 앱 시작
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html> for="calcGlucose">현재 혈당 (mg/dL) *</label>
+              <input type="number" id="calcGlucose" placeholder="혈당을 입력하세요" min="30" max="600">
+            </div>
+            
+            <div class="form-group food-search">
+              <label for="calcFood">음식 이름 *</label>
+              <input type="text" id="calcFood" placeholder="음식을 검색하세요" autocomplete="off">
+              <div id="calcFoodSuggestions" class="food-suggestions"></div>
+            </div>
+            
+            <div class="form-group">
+              <label for="calcAmount">섭취량 (g) *</label>
+              <input type="number" id="calcAmount" placeholder="그램 단위" min="0" step="0.1">
+            </div>
+            
+            <div class="form-group">
+              <label
