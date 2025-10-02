@@ -951,73 +951,116 @@
       const amount = parseFloat(document.getElementById('calcAmount').value);
       
       if (!glucose || !food || !amount) {
-        alert('모든 필수 항목을 입력하세요.');
+        alert('모든 필수 항목(현재 혈당, 음식 이름, 섭취량)을 입력하세요.');
         return;
       }
       
       if (!KOREAN_FOOD_DATABASE[food]) {
-        alert('음식 정보가 없습니다. 직접 입력해주세요.');
+        alert('음식 정보가 없습니다. 검색 결과에서 선택하거나 직접 입력해주세요.');
         return;
       }
       
-      const carbs = Math.round(KOREAN_FOOD_DATABASE[food].carbs * amount / 100);
+      // 탄수화물 계산
+      const foodData = KOREAN_FOOD_DATABASE[food];
+      const carbs = Math.round(foodData.carbs * amount / 100 * 10) / 10; // 소수점 1자리
+      
       const user = userManager.getCurrentUser();
+      const personalICR = user.personalizedData.personalICR || 15; // ICR: 1단위당 탄수화물 g
+      const personalISF = user.personalizedData.personalISF || 50; // ISF: 1단위당 혈당 감소 mg/dL
+      const targetGlucose = 120; // 목표 혈당
       
-      const result = aiEngine.calculatePersonalizedInsulin(glucose, carbs, user.personalizedData);
+      // 인슐린 계산
+      const carbInsulin = carbs / personalICR; // 식사 인슐린
+      const correctionInsulin = glucose > targetGlucose ? (glucose - targetGlucose) / personalISF : 0; // 교정 인슐린
+      const totalInsulin = carbInsulin + correctionInsulin;
       
+      // 결과를 전역 변수에 저장
       calculationResult = {
         glucose,
         food,
         amount,
         carbs,
-        ...result,
+        carbInsulin: Math.round(carbInsulin * 10) / 10,
+        correctionInsulin: Math.round(correctionInsulin * 10) / 10,
+        total: Math.round(totalInsulin * 10) / 10,
         timestamp: new Date().toISOString()
       };
       
+      // 결과 표시
       const resultsContainer = document.getElementById('calcResults');
       resultsContainer.innerHTML = `
         <div class="ai-recommendations">
-          <h3 style="margin-bottom: 1rem; color: #7c3aed;">AI 개인화 인슐린 계산 결과</h3>
+          <h3 style="margin-bottom: 1rem; color: #7c3aed;">🎯 인슐린 투여량 계산 결과</h3>
           
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.5); border-radius: 0.75rem;">
-              <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;">${result.carbInsulin}</div>
-              <div style="font-size: 0.875rem; color: #6b7280;">탄수화물 인슐린</div>
+          <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+            <h4 style="margin-bottom: 0.5rem;">📋 입력 정보</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; font-size: 0.9rem;">
+              <div>현재 혈당: <strong>${glucose} mg/dL</strong></div>
+              <div>음식: <strong>${food}</strong></div>
+              <div>섭취량: <strong>${amount}g</strong></div>
+              <div>탄수화물: <strong>${carbs}g</strong></div>
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.8); border-radius: 0.75rem; border: 1px solid #e5e7eb;">
+              <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">식사 인슐린</div>
+              <div style="font-size: 1.75rem; font-weight: bold; color: #3b82f6;">${calculationResult.carbInsulin}</div>
+              <div style="font-size: 0.75rem; color: #6b7280;">단위</div>
+              <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">${carbs}g ÷ ${personalICR}</div>
             </div>
             
-            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.5); border-radius: 0.75rem;">
-              <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;">${result.correctionInsulin}</div>
-              <div style="font-size: 0.875rem; color: #6b7280;">교정 인슐린</div>
+            <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.8); border-radius: 0.75rem; border: 1px solid #e5e7eb;">
+              <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">교정 인슐린</div>
+              <div style="font-size: 1.75rem; font-weight: bold; color: #f59e0b;">${calculationResult.correctionInsulin}</div>
+              <div style="font-size: 0.75rem; color: #6b7280;">단위</div>
+              <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">
+                ${glucose > targetGlucose ? `(${glucose}-${targetGlucose}) ÷ ${personalISF}` : '교정 불필요'}
+              </div>
             </div>
             
-            <div style="text-align: center; padding: 1rem; background: rgba(139, 92, 246, 0.2); border-radius: 0.75rem; border: 2px solid #8b5cf6;">
-              <div style="font-size: 2rem; font-weight: bold; color: #7c3aed;">${result.total}</div>
-              <div style="font-size: 1rem; font-weight: 600; color: #7c3aed;">총 인슐린 단위</div>
+            <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);">
+              <div style="font-size: 0.875rem; margin-bottom: 0.5rem;">총 인슐린</div>
+              <div style="font-size: 2.5rem; font-weight: bold;">${calculationResult.total}</div>
+              <div style="font-size: 1rem;">단위</div>
             </div>
+          </div>
+          
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+            <h4 style="color: #059669; margin-bottom: 0.5rem;">📊 계산 상세</h4>
+            <div style="font-size: 0.875rem; color: #047857;">
+              <p style="margin-bottom: 0.25rem;">• 식사 인슐린 = 탄수화물(${carbs}g) ÷ ICR(${personalICR}) = ${calculationResult.carbInsulin}단위</p>
+              ${glucose > targetGlucose ? 
+                `<p style="margin-bottom: 0.25rem;">• 교정 인슐린 = (현재혈당(${glucose}) - 목표혈당(${targetGlucose})) ÷ ISF(${personalISF}) = ${calculationResult.correctionInsulin}단위</p>` :
+                '<p style="margin-bottom: 0.25rem;">• 교정 인슐린 = 0단위 (혈당이 목표 범위 내)</p>'
+              }
+              <p style="font-weight: 600; margin-top: 0.5rem;">• 총 필요 인슐린 = ${calculationResult.carbInsulin} + ${calculationResult.correctionInsulin} = ${calculationResult.total}단위</p>
+            </div>
+          </div>
+          
+          <div style="background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+            <h4 style="color: #d97706; margin-bottom: 0.5rem;">⚠️ 주의사항</h4>
+            <ul style="font-size: 0.875rem; color: #92400e; margin-left: 1rem;">
+              <li>이 계산은 표준 공식에 기반한 참고 자료입니다</li>
+              <li>실제 투여량은 운동, 스트레스, 질병 등에 따라 조정이 필요할 수 있습니다</li>
+              <li>반드시 담당 의료진의 지시를 따르세요</li>
+              <li>저혈당 증상이 있으면 인슐린 투여를 연기하고 혈당을 재측정하세요</li>
+            </ul>
+          </div>
+          
+          <div style="display: flex; gap: 1rem;">
+            <button onclick="saveCalculation()" class="btn btn-success btn-full">
+              💾 이 계산 결과를 기록에 저장
+            </button>
+            <button onclick="clearCalculator()" class="btn btn-primary">
+              🔄 새로 계산
+            </button>
           </div>
         </div>
       `;
     }
-
-    function saveCalculation() {
-      if (!calculationResult) {
-        alert('먼저 인슐린을 계산하세요.');
-        return;
-      }
-      
-      const record = {
-        id: Date.now(),
-        timestamp: calculationResult.timestamp,
-        glucose: calculationResult.glucose,
-        food: calculationResult.food,
-        amount: calculationResult.amount,
-        carbs: calculationResult.carbs,
-        insulin: calculationResult.total
-      };
-      
-      userManager.addRecord(record);
-      alert('기록이 저장되었습니다!');
-      
+    
+    function clearCalculator() {
       document.getElementById('calcGlucose').value = '';
       document.getElementById('calcFood').value = '';
       document.getElementById('calcAmount').value = '';
@@ -1279,27 +1322,41 @@
     function renderCalculator(container, user) {
       container.innerHTML = `
         <div class="card full-width">
-          <h2>AI 개인화 인슐린 계산기</h2>
-          <p style="color: #6b7280; margin-bottom: 1.5rem;">
-            개인 데이터를 학습하여 맞춤형 인슐린 용량을 계산합니다.
-            <strong>모든 계산 결과는 의료진과 상의 후 사용하세요.</strong>
-          </p>
+          <h2>🧮 AI 개인화 인슐린 계산기</h2>
+          <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+            <p style="color: #dc2626; font-weight: 600; margin-bottom: 0.5rem;">
+              ⚠️ 중요 안내
+            </p>
+            <p style="color: #991b1b; font-size: 0.875rem;">
+              이 계산기는 참고용입니다. 실제 인슐린 투여 전 반드시 담당 의료진과 상담하세요.
+              개인의 상태에 따라 용량 조정이 필요할 수 있습니다.
+            </p>
+          </div>
+          
+          <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+            <h3 style="margin-bottom: 0.5rem;">📊 현재 설정값</h3>
+            <p style="font-size: 0.9rem; color: #6b7280;">
+              ICR (인슐린 대 탄수화물 비율): <strong>1단위당 ${user.personalizedData.personalICR}g</strong><br>
+              ISF (인슐린 민감도 계수): <strong>1단위당 ${user.personalizedData.personalISF}mg/dL 감소</strong><br>
+              목표 혈당: <strong>120mg/dL</strong>
+            </p>
+          </div>
           
           <div class="form-grid">
             <div class="form-group">
               <label for="calcGlucose">현재 혈당 (mg/dL) *</label>
-              <input type="number" id="calcGlucose" placeholder="혈당을 입력하세요" min="30" max="600">
+              <input type="number" id="calcGlucose" placeholder="예: 150" min="30" max="600" onchange="updateCalculatorPreview()">
             </div>
             
             <div class="form-group food-search">
               <label for="calcFood">음식 이름 *</label>
-              <input type="text" id="calcFood" placeholder="음식을 검색하세요" autocomplete="off" onkeyup="showCalculatorFoodSuggestions(this.value)">
+              <input type="text" id="calcFood" placeholder="예: 쌀밥" autocomplete="off" onkeyup="showCalculatorFoodSuggestions(this.value)">
               <div id="calcFoodSuggestions" class="food-suggestions"></div>
             </div>
             
             <div class="form-group">
               <label for="calcAmount">섭취량 (g) *</label>
-              <input type="number" id="calcAmount" placeholder="그램 단위" min="0" step="0.1" onchange="updateCalculatorPreview()">
+              <input type="number" id="calcAmount" placeholder="예: 200" min="0" step="0.1" onchange="updateCalculatorPreview()">
             </div>
             
             <div class="form-group">
@@ -1313,16 +1370,22 @@
           
           <div id="calcPreview"></div>
           
-          <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-            <button onclick="calculateInsulin()" class="btn btn-ai btn-full">
-              AI 인슐린 계산
-            </button>
-            <button onclick="saveCalculation()" class="btn btn-success">
-              기록으로 저장
-            </button>
-          </div>
+          <button onclick="calculateInsulin()" class="btn btn-ai btn-full" style="margin-top: 1.5rem; font-size: 1.1rem; padding: 1rem;">
+            🤖 인슐린 투여량 계산하기
+          </button>
           
           <div id="calcResults"></div>
+          
+          <div style="background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; margin-top: 1.5rem;">
+            <h4 style="color: #0c4a6e; margin-bottom: 0.5rem;">💡 사용 방법</h4>
+            <ol style="font-size: 0.875rem; color: #075985; margin-left: 1rem;">
+              <li>현재 혈당 수치를 입력합니다</li>
+              <li>섭취할 음식을 검색하거나 직접 입력합니다</li>
+              <li>섭취량을 그램 단위로 입력합니다</li>
+              <li>"인슐린 투여량 계산하기" 버튼을 클릭합니다</li>
+              <li>계산된 인슐린 단위를 확인합니다</li>
+            </ol>
+          </div>
         </div>
       `;
     }
