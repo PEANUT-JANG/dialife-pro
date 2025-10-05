@@ -247,36 +247,17 @@
                                 <p className="text-sm">프로필: {currentProfile.name}</p>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => setShowSettingsModal(true)} className="p-2 hover:bg-blue-700 rounded" title="설정">
-                                    ⚙️
-                                </button>
-                                <button onClick={exportData} className="p-2 hover:bg-blue-700 rounded" title="내보내기">
-                                    ⬇️
-                                </button>
+                                <button onClick={() => setShowSettingsModal(true)} className="p-2 hover:bg-blue-700 rounded" title="설정">⚙️</button>
+                                <button onClick={exportData} className="p-2 hover:bg-blue-700 rounded" title="내보내기">⬇️</button>
                             </div>
                         </div>
                     </header>
 
                     <div className="bg-white shadow">
                         <div className="max-w-6xl mx-auto flex">
-                            <button
-                                onClick={() => setCurrentTab('dashboard')}
-                                className={`flex-1 py-3 font-medium ${currentTab === 'dashboard' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
-                            >
-                                대시보드
-                            </button>
-                            <button
-                                onClick={() => setCurrentTab('records')}
-                                className={`flex-1 py-3 font-medium ${currentTab === 'records' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
-                            >
-                                기록 관리
-                            </button>
-                            <button
-                                onClick={() => setCurrentTab('exercise')}
-                                className={`flex-1 py-3 font-medium ${currentTab === 'exercise' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
-                            >
-                                운동 추적
-                            </button>
+                            <button onClick={() => setCurrentTab('dashboard')} className={`flex-1 py-3 font-medium ${currentTab === 'dashboard' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}>대시보드</button>
+                            <button onClick={() => setCurrentTab('records')} className={`flex-1 py-3 font-medium ${currentTab === 'records' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}>기록 관리</button>
+                            <button onClick={() => setCurrentTab('exercise')} className={`flex-1 py-3 font-medium ${currentTab === 'exercise' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}>운동 추적</button>
                         </div>
                     </div>
 
@@ -286,10 +267,7 @@
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="bg-white rounded-lg shadow p-4">
                                         <p className="text-sm text-gray-600 mb-2">최근 혈당</p>
-                                        <p className={`text-3xl font-bold ${
-                                            latestBG ? (parseFloat(latestBG.bloodSugar) < 70 ? 'text-red-600' : 
-                                            parseFloat(latestBG.bloodSugar) > 180 ? 'text-orange-600' : 'text-green-600') : 'text-gray-400'
-                                        }`}>
+                                        <p className={`text-3xl font-bold ${latestBG ? (parseFloat(latestBG.bloodSugar) < 70 ? 'text-red-600' : parseFloat(latestBG.bloodSugar) > 180 ? 'text-orange-600' : 'text-green-600') : 'text-gray-400'}`}>
                                             {latestBG ? `${latestBG.bloodSugar} mg/dL` : '기록 없음'}
                                         </p>
                                     </div>
@@ -304,24 +282,9 @@
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <button
-                                        onClick={() => setShowRecordModal(true)}
-                                        className="bg-blue-600 text-white p-4 rounded-lg font-semibold hover:bg-blue-700"
-                                    >
-                                        ➕ 혈당 기록 추가
-                                    </button>
-                                    <button
-                                        onClick={() => setShowCalculatorModal(true)}
-                                        className="bg-green-600 text-white p-4 rounded-lg font-semibold hover:bg-green-700"
-                                    >
-                                        🍎 인슐린 계산기
-                                    </button>
-                                    <button
-                                        onClick={() => setShowExerciseModal(true)}
-                                        className="bg-purple-600 text-white p-4 rounded-lg font-semibold hover:bg-purple-700"
-                                    >
-                                        🏋️ 운동 시작
-                                    </button>
+                                    <button onClick={() => setShowRecordModal(true)} className="bg-blue-600 text-white p-4 rounded-lg font-semibold hover:bg-blue-700">➕ 혈당 기록 추가</button>
+                                    <button onClick={() => setShowCalculatorModal(true)} className="bg-green-600 text-white p-4 rounded-lg font-semibold hover:bg-green-700">🍎 인슐린 계산기</button>
+                                    <button onClick={() => setShowExerciseModal(true)} className="bg-purple-600 text-white p-4 rounded-lg font-semibold hover:bg-purple-700">🏋️ 운동 시작</button>
                                 </div>
 
                                 <div className="bg-white rounded-lg shadow p-4">
@@ -338,9 +301,7 @@
                                                         {record.insulin && <p className="text-blue-600">인슐린: {record.insulin}U</p>}
                                                         {record.food && <p className="text-sm">🍽️ {record.food}</p>}
                                                     </div>
-                                                    <button onClick={() => deleteRecord(record.id)} className="text-red-600 hover:text-red-800">
-                                                        🗑️
-                                                    </button>
+                                                    <button onClick={() => deleteRecord(record.id)} className="text-red-600 hover:text-red-800">🗑️</button>
                                                 </div>
                                             ))}
                                         </div>
@@ -365,9 +326,7 @@
                                                     {record.food && <p className="text-sm">🍽️ {record.food}</p>}
                                                     {record.exercise && <p className="text-sm">💪 {record.exercise}</p>}
                                                 </div>
-                                                <button onClick={() => deleteRecord(record.id)} className="text-red-600 hover:text-red-800">
-                                                    🗑️
-                                                </button>
+                                                <button onClick={() => deleteRecord(record.id)} className="text-red-600 hover:text-red-800">🗑️</button>
                                             </div>
                                         ))}
                                     </div>
@@ -379,12 +338,7 @@
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-lg font-bold">운동 세션 ({exerciseSessions.length}건)</h2>
-                                    <button
-                                        onClick={() => setShowExerciseModal(true)}
-                                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                                    >
-                                        ➕ 새 세션
-                                    </button>
+                                    <button onClick={() => setShowExerciseModal(true)} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">➕ 새 세션</button>
                                 </div>
                                 {exerciseSessions.length === 0 ? (
                                     <p className="text-gray-500 text-center py-8">운동 세션이 없습니다. 첫 운동을 시작해보세요!</p>
@@ -411,9 +365,7 @@
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <button onClick={() => deleteExerciseSession(session.id)} className="text-red-600 hover:text-red-800">
-                                                        🗑️
-                                                    </button>
+                                                    <button onClick={() => deleteExerciseSession(session.id)} className="text-red-600 hover:text-red-800">🗑️</button>
                                                 </div>
                                             </div>
                                         ))}
@@ -431,38 +383,11 @@
                                     <button onClick={() => setShowRecordModal(false)}>❌</button>
                                 </div>
                                 <div className="space-y-3">
-                                    <input
-                                        type="number"
-                                        placeholder="혈당 (mg/dL)"
-                                        value={recordForm.bloodSugar}
-                                        onChange={(e) => setRecordForm({...recordForm, bloodSugar: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="인슐린 (단위)"
-                                        value={recordForm.insulin}
-                                        onChange={(e) => setRecordForm({...recordForm, insulin: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                        step="0.5"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="음식"
-                                        value={recordForm.food}
-                                        onChange={(e) => setRecordForm({...recordForm, food: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="운동"
-                                        value={recordForm.exercise}
-                                        onChange={(e) => setRecordForm({...recordForm, exercise: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    />
-                                    <button onClick={addRecord} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-                                        저장
-                                    </button>
+                                    <input type="number" placeholder="혈당 (mg/dL)" value={recordForm.bloodSugar} onChange={(e) => setRecordForm({...recordForm, bloodSugar: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <input type="number" placeholder="인슐린 (단위)" value={recordForm.insulin} onChange={(e) => setRecordForm({...recordForm, insulin: e.target.value})} className="w-full border rounded px-3 py-2" step="0.5" />
+                                    <input type="text" placeholder="음식" value={recordForm.food} onChange={(e) => setRecordForm({...recordForm, food: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <input type="text" placeholder="운동" value={recordForm.exercise} onChange={(e) => setRecordForm({...recordForm, exercise: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <button onClick={addRecord} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">저장</button>
                                 </div>
                             </div>
                         </div>
@@ -476,35 +401,19 @@
                                     <button onClick={() => setShowExerciseModal(false)}>❌</button>
                                 </div>
                                 <div className="space-y-3">
-                                    <select
-                                        value={exerciseForm.type}
-                                        onChange={(e) => setExerciseForm({...exerciseForm, type: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    >
+                                    <select value={exerciseForm.type} onChange={(e) => setExerciseForm({...exerciseForm, type: e.target.value})} className="w-full border rounded px-3 py-2">
                                         <option value="헬스">헬스</option>
                                         <option value="유산소">유산소</option>
                                         <option value="요가">요가</option>
                                         <option value="수영">수영</option>
                                     </select>
-                                    <select
-                                        value={exerciseForm.intensity}
-                                        onChange={(e) => setExerciseForm({...exerciseForm, intensity: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    >
+                                    <select value={exerciseForm.intensity} onChange={(e) => setExerciseForm({...exerciseForm, intensity: e.target.value})} className="w-full border rounded px-3 py-2">
                                         <option value="낮음">낮음</option>
                                         <option value="중간">중간</option>
                                         <option value="높음">높음</option>
                                     </select>
-                                    <input
-                                        type="number"
-                                        placeholder="시작 혈당 (mg/dL)"
-                                        value={exerciseForm.startBG}
-                                        onChange={(e) => setExerciseForm({...exerciseForm, startBG: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    />
-                                    <button onClick={addExerciseSession} className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">
-                                        운동 시작
-                                    </button>
+                                    <input type="number" placeholder="시작 혈당 (mg/dL)" value={exerciseForm.startBG} onChange={(e) => setExerciseForm({...exerciseForm, startBG: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <button onClick={addExerciseSession} className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">운동 시작</button>
                                 </div>
                             </div>
                         </div>
@@ -522,31 +431,10 @@
                                     <p className="text-yellow-700">실제 인슐린 투여 전 반드시 주치의와 상담하세요.</p>
                                 </div>
                                 <div className="space-y-3">
-                                    <input
-                                        type="number"
-                                        placeholder="현재 혈당 (mg/dL)"
-                                        value={calculatorForm.currentBG}
-                                        onChange={(e) => setCalculatorForm({...calculatorForm, currentBG: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="음식 이름 (선택사항)"
-                                        value={calculatorForm.foodName}
-                                        onChange={(e) => setCalculatorForm({...calculatorForm, foodName: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="탄수화물 (g)"
-                                        value={calculatorForm.carbs}
-                                        onChange={(e) => setCalculatorForm({...calculatorForm, carbs: e.target.value})}
-                                        className="w-full border rounded px-3 py-2"
-                                        step="0.1"
-                                    />
-                                    <button onClick={calculateInsulin} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-                                        인슐린 계산하기
-                                    </button>
+                                    <input type="number" placeholder="현재 혈당 (mg/dL)" value={calculatorForm.currentBG} onChange={(e) => setCalculatorForm({...calculatorForm, currentBG: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <input type="text" placeholder="음식 이름 (선택사항)" value={calculatorForm.foodName} onChange={(e) => setCalculatorForm({...calculatorForm, foodName: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <input type="number" placeholder="탄수화물 (g)" value={calculatorForm.carbs} onChange={(e) => setCalculatorForm({...calculatorForm, carbs: e.target.value})} className="w-full border rounded px-3 py-2" step="0.1" />
+                                    <button onClick={calculateInsulin} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">인슐린 계산하기</button>
                                     
                                     {calculatedInsulin && (
                                         <div className="bg-blue-50 border border-blue-200 rounded p-4">
@@ -555,16 +443,9 @@
                                                 <p>• 탄수화물 처리: {calculatedInsulin.carb} 단위</p>
                                                 <p>• 혈당 보정: {calculatedInsulin.correction} 단위</p>
                                                 <p>• 합계: {calculatedInsulin.total} 단위</p>
-                                                <p className="text-lg font-bold text-blue-600 mt-2">
-                                                    → 권장 투여량: {calculatedInsulin.rounded} 단위
-                                                </p>
+                                                <p className="text-lg font-bold text-blue-600 mt-2">→ 권장 투여량: {calculatedInsulin.rounded} 단위</p>
                                             </div>
-                                            <button
-                                                onClick={saveCalculatorAsRecord}
-                                                className="w-full mt-3 bg-green-600 text-white py-2 rounded hover:bg-green-700"
-                                            >
-                                                ✅ 기록으로 저장
-                                            </button>
+                                            <button onClick={saveCalculatorAsRecord} className="w-full mt-3 bg-green-600 text-white py-2 rounded hover:bg-green-700">✅ 기록으로 저장</button>
                                         </div>
                                     )}
                                 </div>
@@ -582,49 +463,19 @@
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-1">인슐린-탄수화물 비율 (ICR)</label>
-                                        <input
-                                            type="number"
-                                            value={settings.icr}
-                                            onChange={(e) => {
-                                                const newSettings = {...settings, icr: parseFloat(e.target.value) || 10};
-                                                setCurrentProfile({...currentProfile, settings: newSettings});
-                                            }}
-                                            className="w-full border rounded px-3 py-2"
-                                            step="0.5"
-                                        />
+                                        <input type="number" value={settings.icr} onChange={(e) => { const newSettings = {...settings, icr: parseFloat(e.target.value) || 10}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" step="0.5" />
                                         <p className="text-xs text-gray-500 mt-1">1단위 인슐린이 처리하는 탄수화물(g)</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">인슐린 민감도 계수 (ISF)</label>
-                                        <input
-                                            type="number"
-                                            value={settings.isf}
-                                            onChange={(e) => {
-                                                const newSettings = {...settings, isf: parseFloat(e.target.value) || 50};
-                                                setCurrentProfile({...currentProfile, settings: newSettings});
-                                            }}
-                                            className="w-full border rounded px-3 py-2"
-                                        />
+                                        <input type="number" value={settings.isf} onChange={(e) => { const newSettings = {...settings, isf: parseFloat(e.target.value) || 50}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" />
                                         <p className="text-xs text-gray-500 mt-1">1단위 인슐린으로 낮출 수 있는 혈당(mg/dL)</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">목표 혈당 (mg/dL)</label>
-                                        <input
-                                            type="number"
-                                            value={settings.targetBG}
-                                            onChange={(e) => {
-                                                const newSettings = {...settings, targetBG: parseFloat(e.target.value) || 120};
-                                                setCurrentProfile({...currentProfile, settings: newSettings});
-                                            }}
-                                            className="w-full border rounded px-3 py-2"
-                                        />
+                                        <input type="number" value={settings.targetBG} onChange={(e) => { const newSettings = {...settings, targetBG: parseFloat(e.target.value) || 120}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" />
                                     </div>
-                                    <button
-                                        onClick={() => setShowSettingsModal(false)}
-                                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-                                    >
-                                        저장
-                                    </button>
+                                    <button onClick={() => setShowSettingsModal(false)} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">저장</button>
                                 </div>
                             </div>
                         </div>
