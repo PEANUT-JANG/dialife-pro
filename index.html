@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Plus, Settings, Download, Upload, Activity, Apple, Calendar, AlertCircle, Check, Edit2, Trash2, X, User, LogOut } from 'lucide-react';
+import { Plus, Settings, Download, Upload, Activity, Apple, Calendar, AlertCircle, Check, Edit2, Trash2, X, User, Dumbbell, Play, Square, Clock } from 'lucide-react';
 
 // 로컬스토리지 키
 const STORAGE_KEYS = {
@@ -250,7 +250,6 @@ const RecordModal = ({ record, onSave, onClose }) => {
   });
 
   const handleSave = () => {
-    // 유효성 검사
     if (!localRecord.timestamp) {
       alert('시간을 입력해주세요.');
       return;
@@ -355,6 +354,265 @@ const RecordModal = ({ record, onSave, onClose }) => {
   );
 };
 
+// 운동 세션 모달
+const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => {
+  const [localSession, setLocalSession] = useState(session || {
+    id: Date.now(),
+    type: '헬스',
+    startTime: new Date().toISOString().slice(0, 16),
+    endTime: '',
+    intensity: '중간',
+    bgRecords: [],
+    note: '',
+    status: 'active' // active, completed
+  });
+
+  const [quickBG, setQuickBG] = useState('');
+
+  const exerciseTypes = ['헬스', '유산소', '요가', '수영', '걷기', '자전거', '기타'];
+  const intensityLevels = ['낮음', '중간', '높음'];
+
+  const addQuickBG = () => {
+    if (!quickBG || isNaN(parseFloat(quickBG))) {
+      alert('혈당 값을 입력해주세요.');
+      return;
+    }
+
+    const bgRecord = {
+      timestamp: new Date().toISOString().slice(0, 16),
+      value: quickBG,
+      label: localSession.bgRecords.length === 0 ? '운동 시작' : '운동 중'
+    };
+
+    setLocalSession({
+      ...localSession,
+      bgRecords: [...localSession.bgRecords, bgRecord]
+    });
+    
+    // 메인 기록에도 추가
+    onQuickBGRecord({
+      id: Date.now(),
+      timestamp: bgRecord.timestamp,
+      bloodSugar: quickBG,
+      insulin: '',
+      food: '',
+      exercise: `${localSession.type} - ${bgRecord.label}`,
+      note: ''
+    });
+
+    setQuickBG('');
+  };
+
+  const completeSession = () => {
+    if (!localSession.endTime) {
+      setLocalSession({
+        ...localSession,
+        endTime: new Date().toISOString().slice(0, 16)
+      });
+    }
+
+    // 종료 혈당 기록
+    if (quickBG && !isNaN(parseFloat(quickBG))) {
+      const endBGRecord = {
+        timestamp: new Date().toISOString().slice(0, 16),
+        value: quickBG,
+        label: '운동 종료'
+      };
+
+      const completedSession = {
+        ...localSession,
+        endTime: new Date().toISOString().slice(0, 16),
+        bgRecords: [...localSession.bgRecords, endBGRecord],
+        status: 'completed'
+      };
+
+      // 메인 기록에 추가
+      onQuickBGRecord({
+        id: Date.now(),
+        timestamp: endBGRecord.timestamp,
+        bloodSugar: quickBG,
+        insulin: '',
+        food: '',
+        exercise: `${localSession.type} - 운동 종료`,
+        note: ''
+      });
+
+      onSave(completedSession);
+    } else {
+      onSave({
+        ...localSession,
+        endTime: new Date().toISOString().slice(0, 16),
+        status: 'completed'
+      });
+    }
+    onClose();
+  };
+
+  const calculateDuration = () => {
+    if (!localSession.startTime || !localSession.endTime) return '진행중';
+    const start = new Date(localSession.startTime);
+    const end = new Date(localSession.endTime);
+    const minutes = Math.round((end - start) / 60000);
+    return `${minutes}분`;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-screen overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Dumbbell size={24} className="text-purple-600" />
+            운동 세션
+          </h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">운동 종류</label>
+              <select
+                value={localSession.type}
+                onChange={(e) => setLocalSession({...localSession, type: e.target.value})}
+                className="w-full border rounded px-3 py-2"
+              >
+                {exerciseTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">강도</label>
+              <select
+                value={localSession.intensity}
+                onChange={(e) => setLocalSession({...localSession, intensity: e.target.value})}
+                className="w-full border rounded px-3 py-2"
+              >
+                {intensityLevels.map(level => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">시작 시간</label>
+              <input
+                type="datetime-local"
+                value={localSession.startTime}
+                onChange={(e) => setLocalSession({...localSession, startTime: e.target.value})}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                종료 시간 {localSession.endTime && `(${calculateDuration()})`}
+              </label>
+              <input
+                type="datetime-local"
+                value={localSession.endTime}
+                onChange={(e) => setLocalSession({...localSession, endTime: e.target.value})}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+          </div>
+
+          {/* 빠른 혈당 기록 */}
+          <div className="bg-purple-50 border border-purple-200 rounded p-4">
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <Activity size={18} />
+              운동 중 혈당 기록
+            </h3>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="number"
+                value={quickBG}
+                onChange={(e) => setQuickBG(e.target.value)}
+                placeholder="현재 혈당"
+                className="flex-1 border rounded px-3 py-2"
+                min="0"
+                max="600"
+              />
+              <button
+                onClick={addQuickBG}
+                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+              >
+                기록
+              </button>
+            </div>
+
+            {/* 혈당 기록 목록 */}
+            {localSession.bgRecords.length > 0 && (
+              <div className="space-y-1">
+                {localSession.bgRecords.map((bg, idx) => (
+                  <div key={idx} className="flex justify-between text-sm bg-white rounded px-2 py-1">
+                    <span className="text-gray-600">{bg.label}</span>
+                    <span className={`font-semibold ${
+                      parseFloat(bg.value) < 70 ? 'text-red-600' :
+                      parseFloat(bg.value) > 180 ? 'text-orange-600' : 'text-green-600'
+                    }`}>
+                      {bg.value} mg/dL
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 혈당 변화 요약 */}
+            {localSession.bgRecords.length >= 2 && (
+              <div className="mt-2 text-sm bg-white rounded p-2">
+                <span className="text-gray-600">혈당 변화: </span>
+                <span className="font-semibold">
+                  {localSession.bgRecords[0].value} → {localSession.bgRecords[localSession.bgRecords.length - 1].value} mg/dL
+                  {' '}({(parseFloat(localSession.bgRecords[localSession.bgRecords.length - 1].value) - parseFloat(localSession.bgRecords[0].value)) > 0 ? '+' : ''}
+                  {(parseFloat(localSession.bgRecords[localSession.bgRecords.length - 1].value) - parseFloat(localSession.bgRecords[0].value)).toFixed(0)})
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">메모</label>
+            <textarea
+              value={localSession.note}
+              onChange={(e) => setLocalSession({...localSession, note: e.target.value})}
+              className="w-full border rounded px-3 py-2"
+              rows="2"
+              placeholder="운동 관련 메모"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            {localSession.status === 'active' && (
+              <button
+                onClick={completeSession}
+                className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 flex items-center justify-center gap-2"
+              >
+                <Square size={18} />
+                운동 종료
+              </button>
+            )}
+            <button
+              onClick={() => {
+                onSave(localSession);
+                onClose();
+              }}
+              className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            >
+              저장
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // 인슐린 계산기 모달
 const InsulinCalculatorModal = ({ settings, onClose, onSaveRecord }) => {
   const [currentBG, setCurrentBG] = useState('');
@@ -413,7 +671,6 @@ const InsulinCalculatorModal = ({ settings, onClose, onSaveRecord }) => {
       
       const nutrition = JSON.parse(responseText);
       
-      // 유효성 검사
       if (!nutrition.carbohydrates || isNaN(nutrition.carbohydrates)) {
         throw new Error('유효하지 않은 영양정보입니다.');
       }
@@ -437,7 +694,6 @@ const InsulinCalculatorModal = ({ settings, onClose, onSaveRecord }) => {
     const bg = parseFloat(currentBG);
     const carbAmount = parseFloat(carbs);
     
-    // 유효성 검사
     if (isNaN(bg) || bg <= 0 || bg > 600) {
       alert('혈당 값이 유효하지 않습니다 (1-600 mg/dL).');
       return;
@@ -447,9 +703,6 @@ const InsulinCalculatorModal = ({ settings, onClose, onSaveRecord }) => {
       return;
     }
 
-    // 인슐린 계산
-    // ICR: 인슐린 1단위가 처리하는 탄수화물(g)
-    // ISF: 인슐린 1단위로 낮출 수 있는 혈당(mg/dL)
     const carbInsulin = carbAmount / settings.icr;
     const correctionInsulin = (bg - settings.targetBG) / settings.isf;
     const totalInsulin = Math.max(0, carbInsulin + correctionInsulin);
@@ -458,7 +711,7 @@ const InsulinCalculatorModal = ({ settings, onClose, onSaveRecord }) => {
       carb: carbInsulin.toFixed(1),
       correction: correctionInsulin.toFixed(1),
       total: totalInsulin.toFixed(1),
-      rounded: Math.round(totalInsulin * 2) / 2 // 0.5 단위로 반올림
+      rounded: Math.round(totalInsulin * 2) / 2
     });
   };
 
@@ -600,42 +853,38 @@ export default function DiabetesApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showExerciseModal, setShowExerciseModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [editingSession, setEditingSession] = useState(null);
   const [currentTab, setCurrentTab] = useState('dashboard');
 
   // 초기 로드
   useEffect(() => {
     try {
-      // 면책조항 확인
       const disclaimerStatus = localStorage.getItem(STORAGE_KEYS.DISCLAIMER);
       if (disclaimerStatus === 'accepted') {
         setDisclaimerAccepted(true);
       }
 
-      // 프로필 로드
       const savedProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
       if (savedProfiles) {
         const parsedProfiles = JSON.parse(savedProfiles);
         setProfiles(parsedProfiles);
 
-        // 현재 프로필 로드
         const currentProfileId = localStorage.getItem(STORAGE_KEYS.CURRENT_PROFILE);
         if (currentProfileId) {
           const profile = parsedProfiles.find(p => p.id === currentProfileId);
           if (profile) {
             setCurrentProfile(profile);
           } else {
-            // 저장된 프로필 ID가 유효하지 않으면 첫 번째 프로필 선택
             setCurrentProfile(parsedProfiles[0]);
             localStorage.setItem(STORAGE_KEYS.CURRENT_PROFILE, parsedProfiles[0].id);
           }
         } else if (parsedProfiles.length > 0) {
-          // 현재 프로필이 없으면 첫 번째 선택
           setCurrentProfile(parsedProfiles[0]);
           localStorage.setItem(STORAGE_KEYS.CURRENT_PROFILE, parsedProfiles[0].id);
         }
       } else {
-        // 첫 실행 시 기본 프로필 생성
         const defaultProfile = {
           id: Date.now().toString(),
           name: '내 프로필',
@@ -646,7 +895,8 @@ export default function DiabetesApp() {
             targetBG: 120,
             cgmMode: 'manual'
           },
-          records: []
+          records: [],
+          exerciseSessions: []
         };
         setProfiles([defaultProfile]);
         setCurrentProfile(defaultProfile);
@@ -655,7 +905,6 @@ export default function DiabetesApp() {
       }
     } catch (error) {
       console.error('Error loading from localStorage:', error);
-      // localStorage 오류 시 기본 프로필 생성
       const defaultProfile = {
         id: Date.now().toString(),
         name: '내 프로필',
@@ -666,14 +915,14 @@ export default function DiabetesApp() {
           targetBG: 120,
           cgmMode: 'manual'
         },
-        records: []
+        records: [],
+        exerciseSessions: []
       };
       setProfiles([defaultProfile]);
       setCurrentProfile(defaultProfile);
     }
   }, []);
 
-  // 프로필 변경 시 저장
   useEffect(() => {
     if (currentProfile && profiles.length > 0) {
       try {
@@ -708,7 +957,8 @@ export default function DiabetesApp() {
         targetBG: 120,
         cgmMode: 'manual'
       },
-      records: []
+      records: [],
+      exerciseSessions: []
     };
     const updatedProfiles = [...profiles, newProfile];
     setProfiles(updatedProfiles);
@@ -738,7 +988,6 @@ export default function DiabetesApp() {
     setProfiles(updatedProfiles);
     
     if (currentProfile?.id === profileId) {
-      // 삭제된 프로필이 현재 프로필이면 다른 프로필 선택
       const newCurrentProfile = updatedProfiles[0] || null;
       setCurrentProfile(newCurrentProfile);
       try {
@@ -814,6 +1063,52 @@ export default function DiabetesApp() {
     }
   };
 
+  const addExerciseSession = (session) => {
+    if (!currentProfile) return;
+    const updatedSessions = [...(currentProfile.exerciseSessions || []), session];
+    const updatedProfile = {
+      ...currentProfile,
+      exerciseSessions: updatedSessions
+    };
+    setCurrentProfile(updatedProfile);
+    const updatedProfiles = profiles.map(p => 
+      p.id === currentProfile.id ? updatedProfile : p
+    );
+    setProfiles(updatedProfiles);
+  };
+
+  const updateExerciseSession = (session) => {
+    if (!currentProfile) return;
+    const updatedSessions = (currentProfile.exerciseSessions || []).map(s => 
+      s.id === session.id ? session : s
+    );
+    const updatedProfile = {
+      ...currentProfile,
+      exerciseSessions: updatedSessions
+    };
+    setCurrentProfile(updatedProfile);
+    const updatedProfiles = profiles.map(p => 
+      p.id === currentProfile.id ? updatedProfile : p
+    );
+    setProfiles(updatedProfiles);
+  };
+
+  const deleteExerciseSession = (id) => {
+    if (!currentProfile) return;
+    if (confirm('이 운동 세션을 삭제하시겠습니까?')) {
+      const updatedSessions = (currentProfile.exerciseSessions || []).filter(s => s.id !== id);
+      const updatedProfile = {
+        ...currentProfile,
+        exerciseSessions: updatedSessions
+      };
+      setCurrentProfile(updatedProfile);
+      const updatedProfiles = profiles.map(p => 
+        p.id === currentProfile.id ? updatedProfile : p
+      );
+      setProfiles(updatedProfiles);
+    }
+  };
+
   const exportData = () => {
     if (!currentProfile) return;
     const dataStr = JSON.stringify(currentProfile, null, 2);
@@ -834,19 +1129,18 @@ export default function DiabetesApp() {
       try {
         const data = JSON.parse(event.target.result);
         
-        // 데이터 유효성 검사
         if (!data.settings || !Array.isArray(data.records)) {
           alert('올바른 데이터 파일이 아닙니다.');
           return;
         }
 
-        // 새 프로필로 가져오기
         const importedProfile = {
           id: Date.now().toString(),
           name: data.name || `가져온 프로필 ${new Date().toLocaleString('ko-KR')}`,
           createdAt: new Date().toISOString(),
           settings: data.settings,
-          records: data.records
+          records: data.records,
+          exerciseSessions: data.exerciseSessions || []
         };
 
         const updatedProfiles = [...profiles, importedProfile];
@@ -887,9 +1181,9 @@ export default function DiabetesApp() {
   }
 
   const records = currentProfile.records || [];
+  const exerciseSessions = currentProfile.exerciseSessions || [];
   const settings = currentProfile.settings || { icr: 10, isf: 50, targetBG: 120, cgmMode: 'manual' };
 
-  // 차트 데이터 준비
   const chartData = records
     .filter(r => r.bloodSugar && !isNaN(parseFloat(r.bloodSugar)))
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
@@ -923,9 +1217,10 @@ export default function DiabetesApp() {
     ? Math.round(weekRecords.reduce((sum, r) => sum + parseFloat(r.bloodSugar), 0) / weekRecords.length)
     : null;
 
+  const activeExercise = exerciseSessions.find(s => s.status === 'active');
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
       <header className="bg-blue-600 text-white p-4 shadow-lg">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
@@ -962,7 +1257,6 @@ export default function DiabetesApp() {
         </div>
       </header>
 
-      {/* 탭 네비게이션 */}
       <div className="bg-white shadow">
         <div className="max-w-6xl mx-auto flex">
           <button
@@ -977,14 +1271,18 @@ export default function DiabetesApp() {
           >
             기록 관리
           </button>
+          <button
+            onClick={() => setCurrentTab('exercise')}
+            className={`flex-1 py-3 font-medium ${currentTab === 'exercise' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+          >
+            운동 추적
+          </button>
         </div>
       </div>
 
-      {/* 메인 컨텐츠 */}
       <main className="max-w-6xl mx-auto p-4 space-y-4">
         {currentTab === 'dashboard' && (
           <>
-            {/* 현재 상태 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg shadow p-4">
                 <div className="flex items-center gap-2 text-gray-600 mb-2">
@@ -1030,8 +1328,30 @@ export default function DiabetesApp() {
               </div>
             </div>
 
-            {/* 빠른 액션 버튼 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeExercise && (
+              <div className="bg-purple-50 border border-purple-300 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Play size={20} className="text-purple-600" />
+                    <span className="font-semibold">운동 진행 중: {activeExercise.type}</span>
+                    <span className="text-sm text-gray-600">
+                      (시작: {new Date(activeExercise.startTime).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'})})
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingSession(activeExercise);
+                      setShowExerciseModal(true);
+                    }}
+                    className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                  >
+                    세션 열기
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 onClick={() => setShowRecordModal(true)}
                 className="bg-blue-600 text-white p-4 rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
@@ -1046,9 +1366,18 @@ export default function DiabetesApp() {
                 <Apple size={24} />
                 인슐린 계산기
               </button>
+              <button
+                onClick={() => {
+                  setEditingSession(null);
+                  setShowExerciseModal(true);
+                }}
+                className="bg-purple-600 text-white p-4 rounded-lg font-semibold hover:bg-purple-700 flex items-center justify-center gap-2"
+              >
+                <Dumbbell size={24} />
+                운동 시작
+              </button>
             </div>
 
-            {/* 혈당 그래프 */}
             {chartData.length > 0 && (
               <div className="bg-white rounded-lg shadow p-4">
                 <h2 className="text-lg font-bold mb-4">혈당 추이 (최근 20개)</h2>
@@ -1079,7 +1408,6 @@ export default function DiabetesApp() {
               </div>
             )}
 
-            {/* 최근 기록 */}
             <div className="bg-white rounded-lg shadow p-4">
               <h2 className="text-lg font-bold mb-4">최근 기록</h2>
               {records.length === 0 ? (
@@ -1211,9 +1539,95 @@ export default function DiabetesApp() {
             )}
           </div>
         )}
+
+        {currentTab === 'exercise' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">운동 세션 ({exerciseSessions.length}건)</h2>
+                <button
+                  onClick={() => {
+                    setEditingSession(null);
+                    setShowExerciseModal(true);
+                  }}
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  새 세션
+                </button>
+              </div>
+
+              {exerciseSessions.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">운동 세션이 없습니다.</p>
+              ) : (
+                <div className="space-y-3">
+                  {exerciseSessions
+                    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+                    .map(session => (
+                      <div key={session.id} className="border rounded p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Dumbbell size={18} className="text-purple-600" />
+                              <span className="font-semibold">{session.type}</span>
+                              <span className="text-sm text-gray-600">({session.intensity})</span>
+                              {session.status === 'active' && (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">진행중</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600 mb-2">
+                              <Clock size={14} className="inline mr-1" />
+                              {new Date(session.startTime).toLocaleString('ko-KR')}
+                              {session.endTime && ` ~ ${new Date(session.endTime).toLocaleString('ko-KR')}`}
+                            </div>
+                            
+                            {session.bgRecords && session.bgRecords.length > 0 && (
+                              <div className="mt-2 bg-purple-50 rounded p-2">
+                                <p className="text-xs font-medium text-gray-700 mb-1">혈당 변화</p>
+                                <div className="flex gap-2 flex-wrap">
+                                  {session.bgRecords.map((bg, idx) => (
+                                    <span key={idx} className="text-xs bg-white px-2 py-1 rounded">
+                                      {bg.label}: <span className={`font-semibold ${
+                                        parseFloat(bg.value) < 70 ? 'text-red-600' :
+                                        parseFloat(bg.value) > 180 ? 'text-orange-600' : 'text-green-600'
+                                      }`}>{bg.value}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {session.note && (
+                              <p className="text-sm text-gray-600 mt-2">📝 {session.note}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingSession(session);
+                                setShowExerciseModal(true);
+                              }}
+                              className="p-1 text-gray-600 hover:text-blue-600"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => deleteExerciseSession(session.id)}
+                              className="p-1 text-gray-600 hover:text-red-600"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* 모달들 */}
       {showProfileModal && (
         <ProfileModal
           profiles={profiles}
@@ -1259,7 +1673,25 @@ export default function DiabetesApp() {
         />
       )}
 
-      {/* 푸터 */}
+      {showExerciseModal && (
+        <ExerciseSessionModal
+          session={editingSession}
+          onSave={(session) => {
+            if (editingSession) {
+              updateExerciseSession(session);
+            } else {
+              addExerciseSession(session);
+            }
+            setEditingSession(null);
+          }}
+          onClose={() => {
+            setShowExerciseModal(false);
+            setEditingSession(null);
+          }}
+          onQuickBGRecord={addRecord}
+        />
+      )}
+
       <footer className="mt-8 py-4 text-center text-sm text-gray-500 bg-white">
         <p>본 애플리케이션은 의료 전문가의 조언을 대체할 수 없습니다.</p>
         <p className="mt-1">대한당뇨병학회 및 보건복지부 지침을 참고하여 제작되었습니다.</p>
