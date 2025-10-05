@@ -364,7 +364,7 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
     intensity: '중간',
     bgRecords: [],
     note: '',
-    status: 'active' // active, completed
+    status: 'active'
   });
 
   const [quickBG, setQuickBG] = useState('');
@@ -389,7 +389,6 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
       bgRecords: [...localSession.bgRecords, bgRecord]
     });
     
-    // 메인 기록에도 추가
     onQuickBGRecord({
       id: Date.now(),
       timestamp: bgRecord.timestamp,
@@ -404,29 +403,20 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
   };
 
   const completeSession = () => {
-    if (!localSession.endTime) {
-      setLocalSession({
-        ...localSession,
-        endTime: new Date().toISOString().slice(0, 16)
-      });
-    }
+    const endBGRecord = quickBG && !isNaN(parseFloat(quickBG)) ? {
+      timestamp: new Date().toISOString().slice(0, 16),
+      value: quickBG,
+      label: '운동 종료'
+    } : null;
 
-    // 종료 혈당 기록
-    if (quickBG && !isNaN(parseFloat(quickBG))) {
-      const endBGRecord = {
-        timestamp: new Date().toISOString().slice(0, 16),
-        value: quickBG,
-        label: '운동 종료'
-      };
+    const completedSession = {
+      ...localSession,
+      endTime: new Date().toISOString().slice(0, 16),
+      bgRecords: endBGRecord ? [...localSession.bgRecords, endBGRecord] : localSession.bgRecords,
+      status: 'completed'
+    };
 
-      const completedSession = {
-        ...localSession,
-        endTime: new Date().toISOString().slice(0, 16),
-        bgRecords: [...localSession.bgRecords, endBGRecord],
-        status: 'completed'
-      };
-
-      // 메인 기록에 추가
+    if (endBGRecord) {
       onQuickBGRecord({
         id: Date.now(),
         timestamp: endBGRecord.timestamp,
@@ -436,15 +426,9 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
         exercise: `${localSession.type} - 운동 종료`,
         note: ''
       });
-
-      onSave(completedSession);
-    } else {
-      onSave({
-        ...localSession,
-        endTime: new Date().toISOString().slice(0, 16),
-        status: 'completed'
-      });
     }
+
+    onSave(completedSession);
     onClose();
   };
 
@@ -522,7 +506,6 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
             </div>
           </div>
 
-          {/* 빠른 혈당 기록 */}
           <div className="bg-purple-50 border border-purple-200 rounded p-4">
             <h3 className="font-semibold mb-2 flex items-center gap-2">
               <Activity size={18} />
@@ -546,7 +529,6 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
               </button>
             </div>
 
-            {/* 혈당 기록 목록 */}
             {localSession.bgRecords.length > 0 && (
               <div className="space-y-1">
                 {localSession.bgRecords.map((bg, idx) => (
@@ -563,7 +545,6 @@ const ExerciseSessionModal = ({ session, onSave, onClose, onQuickBGRecord }) => 
               </div>
             )}
 
-            {/* 혈당 변화 요약 */}
             {localSession.bgRecords.length >= 2 && (
               <div className="mt-2 text-sm bg-white rounded p-2">
                 <span className="text-gray-600">혈당 변화: </span>
@@ -858,7 +839,6 @@ export default function DiabetesApp() {
   const [editingSession, setEditingSession] = useState(null);
   const [currentTab, setCurrentTab] = useState('dashboard');
 
-  // 초기 로드
   useEffect(() => {
     try {
       const disclaimerStatus = localStorage.getItem(STORAGE_KEYS.DISCLAIMER);
@@ -905,21 +885,6 @@ export default function DiabetesApp() {
       }
     } catch (error) {
       console.error('Error loading from localStorage:', error);
-      const defaultProfile = {
-        id: Date.now().toString(),
-        name: '내 프로필',
-        createdAt: new Date().toISOString(),
-        settings: {
-          icr: 10,
-          isf: 50,
-          targetBG: 120,
-          cgmMode: 'manual'
-        },
-        records: [],
-        exerciseSessions: []
-      };
-      setProfiles([defaultProfile]);
-      setCurrentProfile(defaultProfile);
     }
   }, []);
 
@@ -1541,89 +1506,87 @@ export default function DiabetesApp() {
         )}
 
         {currentTab === 'exercise' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">운동 세션 ({exerciseSessions.length}건)</h2>
-                <button
-                  onClick={() => {
-                    setEditingSession(null);
-                    setShowExerciseModal(true);
-                  }}
-                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
-                >
-                  <Plus size={18} />
-                  새 세션
-                </button>
-              </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">운동 세션 ({exerciseSessions.length}건)</h2>
+              <button
+                onClick={() => {
+                  setEditingSession(null);
+                  setShowExerciseModal(true);
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Plus size={18} />
+                새 세션
+              </button>
+            </div>
 
-              {exerciseSessions.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">운동 세션이 없습니다.</p>
-              ) : (
-                <div className="space-y-3">
-                  {exerciseSessions
-                    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
-                    .map(session => (
-                      <div key={session.id} className="border rounded p-4 hover:bg-gray-50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Dumbbell size={18} className="text-purple-600" />
-                              <span className="font-semibold">{session.type}</span>
-                              <span className="text-sm text-gray-600">({session.intensity})</span>
-                              {session.status === 'active' && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">진행중</span>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600 mb-2">
-                              <Clock size={14} className="inline mr-1" />
-                              {new Date(session.startTime).toLocaleString('ko-KR')}
-                              {session.endTime && ` ~ ${new Date(session.endTime).toLocaleString('ko-KR')}`}
-                            </div>
-                            
-                            {session.bgRecords && session.bgRecords.length > 0 && (
-                              <div className="mt-2 bg-purple-50 rounded p-2">
-                                <p className="text-xs font-medium text-gray-700 mb-1">혈당 변화</p>
-                                <div className="flex gap-2 flex-wrap">
-                                  {session.bgRecords.map((bg, idx) => (
-                                    <span key={idx} className="text-xs bg-white px-2 py-1 rounded">
-                                      {bg.label}: <span className={`font-semibold ${
-                                        parseFloat(bg.value) < 70 ? 'text-red-600' :
-                                        parseFloat(bg.value) > 180 ? 'text-orange-600' : 'text-green-600'
-                                      }`}>{bg.value}</span>
-                                    </span>
-                                  ))}
-                                </div>
+            {exerciseSessions.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">운동 세션이 없습니다. 첫 운동을 시작해보세요!</p>
+            ) : (
+              <div className="space-y-3">
+                {exerciseSessions
+                  .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+                  .map(session => (
+                    <div key={session.id} className="border rounded p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Dumbbell size={18} className="text-purple-600" />
+                            <span className="font-semibold">{session.type}</span>
+                            <span className="text-sm text-gray-600">({session.intensity})</span>
+                            {session.status === 'active' && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">진행중</span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600 mb-2">
+                            <Clock size={14} className="inline mr-1" />
+                            {new Date(session.startTime).toLocaleString('ko-KR')}
+                            {session.endTime && ` ~ ${new Date(session.endTime).toLocaleString('ko-KR')}`}
+                          </div>
+                          
+                          {session.bgRecords && session.bgRecords.length > 0 && (
+                            <div className="mt-2 bg-purple-50 rounded p-2">
+                              <p className="text-xs font-medium text-gray-700 mb-1">혈당 변화</p>
+                              <div className="flex gap-2 flex-wrap">
+                                {session.bgRecords.map((bg, idx) => (
+                                  <span key={idx} className="text-xs bg-white px-2 py-1 rounded">
+                                    {bg.label}: <span className={`font-semibold ${
+                                      parseFloat(bg.value) < 70 ? 'text-red-600' :
+                                      parseFloat(bg.value) > 180 ? 'text-orange-600' : 'text-green-600'
+                                    }`}>{bg.value}</span>
+                                  </span>
+                                ))}
                               </div>
-                            )}
-                            
-                            {session.note && (
-                              <p className="text-sm text-gray-600 mt-2">📝 {session.note}</p>
-                            )}
-                          </div>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => {
-                                setEditingSession(session);
-                                setShowExerciseModal(true);
-                              }}
-                              className="p-1 text-gray-600 hover:text-blue-600"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              onClick={() => deleteExerciseSession(session.id)}
-                              className="p-1 text-gray-600 hover:text-red-600"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+                            </div>
+                          )}
+                          
+                          {session.note && (
+                            <p className="text-sm text-gray-600 mt-2">📝 {session.note}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingSession(session);
+                              setShowExerciseModal(true);
+                            }}
+                            className="p-1 text-gray-600 hover:text-blue-600"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => deleteExerciseSession(session.id)}
+                            className="p-1 text-gray-600 hover:text-red-600"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
-                    ))}
-                </div>
-              )}
-            </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -1695,7 +1658,6 @@ export default function DiabetesApp() {
       <footer className="mt-8 py-4 text-center text-sm text-gray-500 bg-white">
         <p>본 애플리케이션은 의료 전문가의 조언을 대체할 수 없습니다.</p>
         <p className="mt-1">대한당뇨병학회 및 보건복지부 지침을 참고하여 제작되었습니다.</p>
-        <p className="mt-2 text-xs">⚠️ Artifact 환경에서는 데이터가 저장되지 않습니다. GitHub Pages에 배포 후 사용하세요.</p>
       </footer>
     </div>
   );
