@@ -13,15 +13,31 @@
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useCallback, useRef } = React;
 
         const STORAGE_KEYS = {
-            PROFILES: 'diabetes_app_profiles',
-            CURRENT_PROFILE: 'diabetes_app_current_profile',
+            USERS: 'diabetes_app_users',
+            CURRENT_USER: 'diabetes_app_current_user',
             DISCLAIMER: 'diabetes_app_disclaimer_accepted'
         };
 
+        // 간단한 해시 함수 (실제 운영환경에서는 더 강력한 해싱 필요)
+        const simpleHash = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return hash.toString(36);
+        };
+
         function DiabetesApp() {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+            const [showLoginModal, setShowLoginModal] = useState(true);
+            const [isSignupMode, setIsSignupMode] = useState(false);
+            const [loginForm, setLoginForm] = useState({ username: '', password: '' });
             const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
             const [profiles, setProfiles] = useState([]);
             const [currentProfile, setCurrentProfile] = useState(null);
@@ -44,21 +60,67 @@
             });
             const [calculatedInsulin, setCalculatedInsulin] = useState(null);
 
+            // 초기 로딩 플래그
+            const isInitialLoad = useRef(true);
+
+            // 사용자 데이터 저장 함수 (useCallback으로 최적화)
+            const saveUserData = useCallback(() => {
+                if (!currentUser || !currentProfile || !profiles.length || isInitialLoad.current) {
+                    return;
+                }
+                try {
+                    const userDataKey = `diabetes_data_${currentUser.username}`;
+                    const userData = {
+                        profiles: profiles,
+                        currentProfile: currentProfile
+                    };
+                    localStorage.setItem(userDataKey, JSON.stringify(userData));
+                } catch (error) {
+                    console.error('저장 오류:', error);
+                }
+            }, [currentUser, currentProfile, profiles]);
+
+            // 초기 로딩
             useEffect(() => {
                 try {
+                    // 면책 조항 확인
                     const disclaimerStatus = localStorage.getItem(STORAGE_KEYS.DISCLAIMER);
                     if (disclaimerStatus === 'accepted') {
                         setDisclaimerAccepted(true);
                     }
 
-                    const savedProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
-                    if (savedProfiles) {
-                        const parsedProfiles = JSON.parse(savedProfiles);
-                        setProfiles(parsedProfiles);
-                        const currentProfileId = localStorage.getItem(STORAGE_KEYS.CURRENT_PROFILE);
-                        const profile = parsedProfiles.find(p => p.id === currentProfileId) || parsedProfiles[0];
-                        setCurrentProfile(profile);
+                    // 로그인 상태 확인
+                    const savedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+                    if (savedUser) {
+                        const user = JSON.parse(savedUser);
+                        setCurrentUser(user);
+                        setIsLoggedIn(true);
+                        setShowLoginModal(false);
+                        loadUserData(user.username);
+                    }
+                } catch (error) {
+                    console.error('로딩 오류:', error);
+                }
+            }, []);
+
+            // 데이터 변경 시 자동 저장 (초기 로딩 이후)
+            useEffect(() => {
+                if (!isInitialLoad.current) {
+                    saveUserData();
+                }
+            }, [currentProfile, profiles, saveUserData]);
+
+            const loadUserData = (username) => {
+                try {
+                    const userDataKey = `diabetes_data_${username}`;
+                    const savedData = localStorage.getItem(userDataKey);
+                    
+                    if (savedData) {
+                        const userData = JSON.parse(savedData);
+                        setProfiles(userData.profiles || []);
+                        setCurrentProfile(userData.currentProfile || userData.profiles[0]);
                     } else {
+                        // 새 사용자 데이터 초기화
                         const defaultProfile = {
                             id: Date.now().toString(),
                             name: '내 프로필',
@@ -69,24 +131,106 @@
                         };
                         setProfiles([defaultProfile]);
                         setCurrentProfile(defaultProfile);
-                        localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify([defaultProfile]));
-                        localStorage.setItem(STORAGE_KEYS.CURRENT_PROFILE, defaultProfile.id);
+                        
+                        // 새 사용자는 즉시 저장
+                        setTimeout(() => {
+                            const userData = {
+                                profiles: [defaultProfile],
+                                currentProfile: defaultProfile
+                            };
+                            localStorage.setItem(userDataKey, JSON.stringify(userData));
+                        }, 100);
+                    }
+                    
+                    // 초기 로딩 완료
+                    setTimeout(() => {
+                        isInitialLoad.current = false;
+                    }, 200);
+                } catch (error) {
+                    console.error('사용자 데이터 로딩 오류:', error);
+                }
+            };
+
+            const handleLogin = () => {
+                if (!loginForm.username || !loginForm.password) {
+                    alert('아이디와 비밀번호를 입력해주세요.');
+                    return;
+                }
+
+                if (loginForm.username.length < 3) {
+                    alert('아이디는 3자 이상이어야 합니다.');
+                    return;
+                }
+
+                if (loginForm.password.length < 4) {
+                    alert('비밀번호는 4자 이상이어야 합니다.');
+                    return;
+                }
+
+                try {
+                    const usersData = localStorage.getItem(STORAGE_KEYS.USERS);
+                    const users = usersData ? JSON.parse(usersData) : {};
+
+                    if (isSignupMode) {
+                        // 회원가입
+                        if (users[loginForm.username]) {
+                            alert('이미 존재하는 아이디입니다.');
+                            return;
+                        }
+                        users[loginForm.username] = {
+                            username: loginForm.username,
+                            passwordHash: simpleHash(loginForm.password),
+                            createdAt: new Date().toISOString()
+                        };
+                        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+                        alert('회원가입이 완료되었습니다. 로그인해주세요.');
+                        setIsSignupMode(false);
+                        setLoginForm({ username: loginForm.username, password: '' });
+                    } else {
+                        // 로그인
+                        const user = users[loginForm.username];
+                        if (!user || user.passwordHash !== simpleHash(loginForm.password)) {
+                            alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+                            return;
+                        }
+                        
+                        setCurrentUser(user);
+                        setIsLoggedIn(true);
+                        setShowLoginModal(false);
+                        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+                        isInitialLoad.current = true; // 로그인 시 초기 로딩 플래그 리셋
+                        loadUserData(user.username);
                     }
                 } catch (error) {
-                    console.error('로딩 오류:', error);
+                    console.error('로그인 오류:', error);
+                    alert('로그인 중 오류가 발생했습니다.');
                 }
-            }, []);
+            };
 
-            useEffect(() => {
-                if (currentProfile && profiles.length > 0) {
-                    try {
-                        const updatedProfiles = profiles.map(p => p.id === currentProfile.id ? currentProfile : p);
-                        localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updatedProfiles));
-                    } catch (error) {
-                        console.error('저장 오류:', error);
+            const handleLogout = () => {
+                if (confirm('로그아웃 하시겠습니까?')) {
+                    // 현재 데이터 최종 저장
+                    if (currentUser && currentProfile && profiles.length > 0) {
+                        const userDataKey = `diabetes_data_${currentUser.username}`;
+                        const userData = {
+                            profiles: profiles,
+                            currentProfile: currentProfile
+                        };
+                        localStorage.setItem(userDataKey, JSON.stringify(userData));
                     }
+                    
+                    // 상태 초기화
+                    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+                    setIsLoggedIn(false);
+                    setCurrentUser(null);
+                    setProfiles([]);
+                    setCurrentProfile(null);
+                    setShowLoginModal(true);
+                    setLoginForm({ username: '', password: '' });
+                    setCurrentTab('dashboard');
+                    isInitialLoad.current = true;
                 }
-            }, [currentProfile]);
+            };
 
             const addRecord = () => {
                 if (!recordForm.bloodSugar && !recordForm.insulin && !recordForm.food) {
@@ -178,9 +322,9 @@
                     timestamp: new Date().toISOString(),
                     bloodSugar: calculatorForm.currentBG,
                     insulin: calculatedInsulin.rounded.toString(),
-                    food: calculatorForm.foodName ? `${calculatorForm.foodName} (탄${calculatorForm.carbs}g)` : '',
+                    food: calculatorForm.foodName ? `${calculatorForm.foodName} (탄${calculatorForm.carbs}g)` : `탄수화물 ${calculatorForm.carbs}g`,
                     exercise: '',
-                    note: ''
+                    note: '인슐린 계산기로 추가됨'
                 };
                 setCurrentProfile({
                     ...currentProfile,
@@ -199,6 +343,7 @@
                 link.href = url;
                 link.download = `diabetes-${currentProfile.name}-${new Date().toISOString().split('T')[0]}.json`;
                 link.click();
+                URL.revokeObjectURL(url);
             };
 
             if (!disclaimerAccepted) {
@@ -226,6 +371,73 @@
                 );
             }
 
+            if (showLoginModal || !isLoggedIn) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg max-w-md w-full p-8 shadow-2xl">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">🩺 1형 당뇨 관리</h1>
+                                <p className="text-gray-600">{isSignupMode ? '새 계정을 만들어주세요' : '로그인하여 시작하세요'}</p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">아이디</label>
+                                    <input
+                                        type="text"
+                                        value={loginForm.username}
+                                        onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="아이디를 입력하세요 (3자 이상)"
+                                        autoComplete="username"
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                                    <input
+                                        type="password"
+                                        value={loginForm.password}
+                                        onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="비밀번호를 입력하세요 (4자 이상)"
+                                        autoComplete={isSignupMode ? "new-password" : "current-password"}
+                                    />
+                                </div>
+                                
+                                <button
+                                    onClick={handleLogin}
+                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                                >
+                                    {isSignupMode ? '회원가입' : '로그인'}
+                                </button>
+                                
+                                <div className="text-center">
+                                    <button
+                                        onClick={() => {
+                                            setIsSignupMode(!isSignupMode);
+                                            setLoginForm({ username: '', password: '' });
+                                        }}
+                                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                    >
+                                        {isSignupMode ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p className="text-xs text-yellow-800">
+                                    <strong>⚠️ 주의:</strong> 이 앱은 브라우저 로컬 저장소를 사용합니다. 
+                                    브라우저 데이터를 삭제하면 기록이 손실될 수 있습니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             if (!currentProfile) {
                 return <div className="flex items-center justify-center h-screen">로딩중...</div>;
             }
@@ -244,11 +456,12 @@
                         <div className="max-w-6xl mx-auto flex items-center justify-between">
                             <div>
                                 <h1 className="text-2xl font-bold">1형 당뇨 관리</h1>
-                                <p className="text-sm">프로필: {currentProfile.name}</p>
+                                <p className="text-sm">👤 {currentUser?.username} | 프로필: {currentProfile.name}</p>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setShowSettingsModal(true)} className="p-2 hover:bg-blue-700 rounded" title="설정">⚙️</button>
                                 <button onClick={exportData} className="p-2 hover:bg-blue-700 rounded" title="내보내기">⬇️</button>
+                                <button onClick={handleLogout} className="px-3 py-2 bg-blue-700 hover:bg-blue-800 rounded font-medium text-sm" title="로그아웃">🚪 로그아웃</button>
                             </div>
                         </div>
                     </header>
@@ -325,6 +538,7 @@
                                                     {record.insulin && <p className="text-blue-600">인슐린: {record.insulin}U</p>}
                                                     {record.food && <p className="text-sm">🍽️ {record.food}</p>}
                                                     {record.exercise && <p className="text-sm">💪 {record.exercise}</p>}
+                                                    {record.note && <p className="text-xs text-gray-500 mt-1">{record.note}</p>}
                                                 </div>
                                                 <button onClick={() => deleteRecord(record.id)} className="text-red-600 hover:text-red-800">🗑️</button>
                                             </div>
@@ -380,13 +594,14 @@
                             <div className="bg-white rounded-lg max-w-md w-full p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-xl font-bold">혈당 기록 추가</h2>
-                                    <button onClick={() => setShowRecordModal(false)}>❌</button>
+                                    <button onClick={() => setShowRecordModal(false)} className="text-gray-500 hover:text-gray-700">❌</button>
                                 </div>
                                 <div className="space-y-3">
                                     <input type="number" placeholder="혈당 (mg/dL)" value={recordForm.bloodSugar} onChange={(e) => setRecordForm({...recordForm, bloodSugar: e.target.value})} className="w-full border rounded px-3 py-2" />
                                     <input type="number" placeholder="인슐린 (단위)" value={recordForm.insulin} onChange={(e) => setRecordForm({...recordForm, insulin: e.target.value})} className="w-full border rounded px-3 py-2" step="0.5" />
                                     <input type="text" placeholder="음식" value={recordForm.food} onChange={(e) => setRecordForm({...recordForm, food: e.target.value})} className="w-full border rounded px-3 py-2" />
                                     <input type="text" placeholder="운동" value={recordForm.exercise} onChange={(e) => setRecordForm({...recordForm, exercise: e.target.value})} className="w-full border rounded px-3 py-2" />
+                                    <textarea placeholder="메모 (선택사항)" value={recordForm.note} onChange={(e) => setRecordForm({...recordForm, note: e.target.value})} className="w-full border rounded px-3 py-2" rows="2"></textarea>
                                     <button onClick={addRecord} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">저장</button>
                                 </div>
                             </div>
@@ -398,7 +613,7 @@
                             <div className="bg-white rounded-lg max-w-md w-full p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-xl font-bold">운동 세션 시작</h2>
-                                    <button onClick={() => setShowExerciseModal(false)}>❌</button>
+                                    <button onClick={() => setShowExerciseModal(false)} className="text-gray-500 hover:text-gray-700">❌</button>
                                 </div>
                                 <div className="space-y-3">
                                     <select value={exerciseForm.type} onChange={(e) => setExerciseForm({...exerciseForm, type: e.target.value})} className="w-full border rounded px-3 py-2">
@@ -406,6 +621,8 @@
                                         <option value="유산소">유산소</option>
                                         <option value="요가">요가</option>
                                         <option value="수영">수영</option>
+                                        <option value="걷기">걷기</option>
+                                        <option value="자전거">자전거</option>
                                     </select>
                                     <select value={exerciseForm.intensity} onChange={(e) => setExerciseForm({...exerciseForm, intensity: e.target.value})} className="w-full border rounded px-3 py-2">
                                         <option value="낮음">낮음</option>
@@ -424,7 +641,10 @@
                             <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-screen overflow-y-auto">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-xl font-bold">🍎 인슐린 계산기</h2>
-                                    <button onClick={() => setShowCalculatorModal(false)}>❌</button>
+                                    <button onClick={() => {
+                                        setShowCalculatorModal(false);
+                                        setCalculatedInsulin(null);
+                                    }} className="text-gray-500 hover:text-gray-700">❌</button>
                                 </div>
                                 <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-sm">
                                     <p className="font-medium text-yellow-800">⚠️ 계산 결과는 참고용입니다</p>
@@ -458,22 +678,22 @@
                             <div className="bg-white rounded-lg max-w-md w-full p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-xl font-bold">설정</h2>
-                                    <button onClick={() => setShowSettingsModal(false)}>❌</button>
+                                    <button onClick={() => setShowSettingsModal(false)} className="text-gray-500 hover:text-gray-700">❌</button>
                                 </div>
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-1">인슐린-탄수화물 비율 (ICR)</label>
-                                        <input type="number" value={settings.icr} onChange={(e) => { const newSettings = {...settings, icr: parseFloat(e.target.value) || 10}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" step="0.5" />
+                                        <input type="number" value={settings.icr} onChange={(e) => { const newSettings = {...settings, icr: parseFloat(e.target.value) || 10}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" step="0.5" min="1" />
                                         <p className="text-xs text-gray-500 mt-1">1단위 인슐린이 처리하는 탄수화물(g)</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">인슐린 민감도 계수 (ISF)</label>
-                                        <input type="number" value={settings.isf} onChange={(e) => { const newSettings = {...settings, isf: parseFloat(e.target.value) || 50}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" />
+                                        <input type="number" value={settings.isf} onChange={(e) => { const newSettings = {...settings, isf: parseFloat(e.target.value) || 50}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" min="1" />
                                         <p className="text-xs text-gray-500 mt-1">1단위 인슐린으로 낮출 수 있는 혈당(mg/dL)</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">목표 혈당 (mg/dL)</label>
-                                        <input type="number" value={settings.targetBG} onChange={(e) => { const newSettings = {...settings, targetBG: parseFloat(e.target.value) || 120}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" />
+                                        <input type="number" value={settings.targetBG} onChange={(e) => { const newSettings = {...settings, targetBG: parseFloat(e.target.value) || 120}; setCurrentProfile({...currentProfile, settings: newSettings}); }} className="w-full border rounded px-3 py-2" min="70" max="180" />
                                     </div>
                                     <button onClick={() => setShowSettingsModal(false)} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">저장</button>
                                 </div>
